@@ -15,8 +15,8 @@ Legende: **✅ getestet** = Code vorhanden und durch automatische Tests bzw. ech
 | Linux, Flutter 3.47.7 | `flutter analyze` (keine Befunde), `flutter test` (5 Tests) | ✅ |
 | GitHub Actions `ubuntu-latest` (CI) | Backend-Tests, Lint, Flutter analyze/test | ✅ |
 | GitHub Actions `windows-latest` | Backend-Tests **auf echtem Windows**, Fensterliste (user32), DPAPI-Verschlüsselung, Autostart-Befehl, **JARVIS.exe (PyInstaller) gebaut und gestartet** (Health-Check) | ✅ (siehe Windows-Build-Lauf) |
-| GitHub Actions `windows-latest` | Flutter-Windows-App + Inno-Setup-Installer | siehe Abschnitt „CI-Ergebnisse“ unten |
-| GitHub Actions `macos-latest` | iOS-App unsigniert kompilieren (inkl. Swift App Intents) | siehe Abschnitt „CI-Ergebnisse“ unten |
+| GitHub Actions `windows-latest` | Flutter-Windows-App gebaut + **Inno-Setup-Installer `JARVIS-Setup-0.4.0.exe` erstellt** (Artefakt ~45 MB) | ✅ |
+| GitHub Actions `macos-latest` | iOS-App mit Xcode unsigniert kompiliert (inkl. Swift App Intents) | ✅ |
 
 **Nicht** getestet wurde auf deinem realen PC/iPhone: echte Mikrofon-/Lautsprecher-Hardware, echtes Tailscale,
 Installation auf einem iPhone, echte Claude-/OpenAI-/Ollama-Aufrufe (keine Schlüssel in der Umgebung –
@@ -71,8 +71,8 @@ die Adapter sind mit simulierten Antworten getestet).
 | Funktion | Status |
 |---|---|
 | PWA (installierbar, Offline-Cache, Warteschlange für Aufgaben) | ✅ im iPhone-Viewport (Chromium) · 🟡 auf echtem Safari/iPhone |
-| Native Flutter-App: Kopplung (QR-Scanner), Chat/Fernaufträge, Genehmigungen, Aufgaben, Gedächtnis, PC-Status, Sprache, Keychain | ✅ analyze/test · siehe CI-Ergebnis iOS-Build · 🟡 auf echtem Gerät |
-| Siri/Kurzbefehle („Frag Jarvis“, „PC-Status“) per App Intents (Swift) | 🟡 (Kompilierung im iOS-Build) |
+| Native Flutter-App: Kopplung (QR-Scanner), Chat/Fernaufträge, Genehmigungen, Aufgaben, Gedächtnis, PC-Status, Sprache, Keychain | ✅ analyze/test · ✅ kompiliert (Xcode, CI) · 🟡 auf echtem Gerät |
+| Siri/Kurzbefehle („Frag Jarvis“, „PC-Status“) per App Intents (Swift) | ✅ kompiliert · 🟡 auf echtem Gerät |
 | Signierte Installation / TestFlight | ⛔ Apple-Developer-Konto + Zertifikate nötig (Anleitung: INSTALLATION_IPHONE.md) |
 | Push-Benachrichtigungen bei geschlossener App (APNs) | ⛔ APNs-Schlüssel + Apple-Konto nötig · ⏳ |
 
@@ -99,7 +99,7 @@ die Adapter sind mit simulierten Antworten getestet).
 | Funktion | Status |
 |---|---|
 | PyInstaller-Build JARVIS.exe | ✅ auf Windows-Runner gebaut und gestartet |
-| Inno-Setup-Installer (pro Benutzer, Autostart-Option, Tailscale-Hinweis) | siehe CI-Ergebnis |
+| Inno-Setup-Installer (pro Benutzer, Autostart-Option, Tailscale-Hinweis) | ✅ gebaut · 🟡 Installation auf deinem PC |
 | Diagnosewerkzeug, Installations-/Start-/Testskripte, Dokumentation | ✅ |
 | Codesignatur des Installers | ⛔ kostenpflichtiges Zertifikat (sonst SmartScreen-Hinweis) |
 
