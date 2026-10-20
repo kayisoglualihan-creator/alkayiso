@@ -144,3 +144,45 @@ def test_offline_provider_formats_results():
     out = run(p.complete("", [{"role": "user", "content": "x"},
                               {"role": "tool", "tool_call_id": "a", "content": "Ergebnis A"}], []))
     assert out.text == "Ergebnis A" and not out.tool_calls
+
+
+class FakeStream:
+    def __init__(self, chunks, final):
+        self.chunks, self.final = chunks, final
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *a):
+        return False
+
+    @property
+    def text_stream(self):
+        async def gen():
+            for c in self.chunks:
+                yield c
+        return gen()
+
+    async def get_final_message(self):
+        return self.final
+
+
+def test_anthropic_token_streaming():
+    final = SimpleNamespace(stop_reason="end_turn", usage=SimpleNamespace(input_tokens=3, output_tokens=4),
+                            content=[SimpleNamespace(type="text", text="Guten Morgen.")])
+    seen = {}
+
+    class Msgs:
+        def stream(self, **kw):
+            seen.update(kw)
+            return FakeStream(["Guten ", "Morgen."], final)
+
+    p = AnthropicProvider("k", client=SimpleNamespace(messages=Msgs()))
+    chunks = []
+
+    async def on_text(t):
+        chunks.append(t)
+
+    out = run(p.complete("s", [{"role": "user", "content": "x"}], [], on_text=on_text))
+    assert chunks == ["Guten ", "Morgen."] and out.text == "Guten Morgen." and out.output_tokens == 4
+    assert seen["model"] == "claude-opus-5-5"

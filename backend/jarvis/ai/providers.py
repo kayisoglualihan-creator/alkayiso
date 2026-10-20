@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import uuid
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -31,6 +32,9 @@ class LLMResponse:
     output_tokens: int = 0
     stop_reason: str = ""
     raw: Any = None
+
+
+TextCallback = Callable[[str], Awaitable[None]]
 
 
 class ProviderError(Exception):
@@ -56,7 +60,9 @@ class Provider:
         self.model = model
         self.max_tokens = max_tokens
 
-    async def complete(self, system: str, messages: list[dict], tools: list[dict]) -> LLMResponse:
+    async def complete(self, system: str, messages: list[dict], tools: list[dict],
+                       on_text: TextCallback | None = None) -> LLMResponse:
+        """``on_text`` erhält Textstücke, sobald sie erzeugt werden (Token-Streaming), falls unterstützt."""
         raise NotImplementedError
 
     def cost(self, resp: LLMResponse, prices: dict | None = None) -> float:
@@ -103,7 +109,8 @@ class AnthropicProvider(Provider):
                     out.append({"role": "user", "content": [block]})
         return out
 
-    async def complete(self, system: str, messages: list[dict], tools: list[dict]) -> LLMResponse:
+    async def complete(self, system: str, messages: list[dict], tools: list[dict],
+                       on_text: TextCallback | None = None) -> LLMResponse:
         kwargs: dict = {
             "model": self.model, "max_tokens": self.max_tokens, "system": system,
             "messages": self.convert(messages),
@@ -119,9 +126,17 @@ class AnthropicProvider(Provider):
             # Serverseitiger Fallback bei Ablehnungen durch Sicherheitsklassifikatoren
             extra_body["fallbacks"] = "default"
             extra_headers["anthropic-beta"] = "server-side-fallback-2026-07-01"
+        kwargs["extra_body"] = extra_body or None
+        kwargs["extra_headers"] = extra_headers or None
         try:
-            resp = await self.client.messages.create(**kwargs, extra_body=extra_body or None,
-                                                     extra_headers=extra_headers or None)
+            if on_text:
+                # Token-Streaming: Text sofort weiterreichen, am Ende die vollständige Nachricht auswerten
+                async with self.client.messages.stream(**kwargs) as stream:
+                    async for chunk in stream.text_stream:
+                        await on_text(chunk)
+                    resp = await stream.get_final_message()
+            else:
+                resp = await self.client.messages.create(**kwargs)
         except self._anthropic.AuthenticationError:
             raise ProviderError("Anthropic-API-Schlüssel ungültig", "auth")
         except self._anthropic.RateLimitError:
@@ -169,7 +184,8 @@ class OpenAIProvider(Provider):
                 out.append({"role": "tool", "tool_call_id": m["tool_call_id"], "content": m["content"]})
         return out
 
-    async def complete(self, system: str, messages: list[dict], tools: list[dict]) -> LLMResponse:
+    async def complete(self, system: str, messages: list[dict], tools: list[dict],
+                       on_text: TextCallback | None = None) -> LLMResponse:
         body: dict = {"model": self.model, "messages": self.convert(system, messages),
                       "max_completion_tokens": self.max_tokens}
         if tools:
@@ -229,7 +245,8 @@ class OllamaProvider(Provider):
                 out.append({"role": m["role"], "content": m["content"]})
         return out
 
-    async def complete(self, system: str, messages: list[dict], tools: list[dict]) -> LLMResponse:
+    async def complete(self, system: str, messages: list[dict], tools: list[dict],
+                       on_text: TextCallback | None = None) -> LLMResponse:
         body: dict = {"model": self.model, "messages": self.convert(system, messages), "stream": False,
                       "options": {"num_predict": self.max_tokens}}
         if tools:

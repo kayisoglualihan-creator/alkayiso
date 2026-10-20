@@ -15,7 +15,7 @@ class ScriptedProvider(Provider):
         self.calls = calls
         self.seen_tool_results = []
 
-    async def complete(self, system, messages, tools):
+    async def complete(self, system, messages, tools, on_text=None):
         if messages[-1]["role"] == "tool":
             self.seen_tool_results.append(messages[-1]["content"])
             if self.calls:

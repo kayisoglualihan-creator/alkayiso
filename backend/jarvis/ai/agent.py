@@ -115,9 +115,13 @@ class Agent:
         final_text = ""
         await send({"type": "status", "state": "thinking", "provider": provider.name, "model": provider.model})
 
+        async def on_text(chunk: str) -> None:
+            await send({"type": "text_delta", "text": chunk})
+
         for _step in range(MAX_STEPS):
             try:
-                resp: LLMResponse = await provider.complete(system, messages, tools if provider.supports_tools else [])
+                resp: LLMResponse = await provider.complete(system, messages, tools if provider.supports_tools else [],
+                                                            on_text=on_text if emit else None)
             except ProviderError as exc:
                 final_text = f"Der KI-Anbieter ist gerade nicht verfügbar: {exc}"
                 await send({"type": "error", "code": exc.code, "message": str(exc)})

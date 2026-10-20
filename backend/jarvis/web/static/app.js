@@ -319,17 +319,23 @@ async function streamChat(text) {
     }
   } finally { $("#chat-send").disabled = false; if (Core.state !== "speaking") Core.set("idle"); }
 }
+let liveBubble = null;  // Blase, in die gestreamte Textstücke laufen
 function handleAgentEvent(ev) {
   switch (ev.type) {
-    case "status": Core.set("thinking"); break;
-    case "tool_call": Core.set("acting"); addMsg("event", `⚙ ${ev.summary}`); break;
+    case "status": Core.set("thinking"); liveBubble = null; break;
+    case "text_delta":
+      if (!liveBubble) liveBubble = addMsg("assistant", "");
+      liveBubble.textContent += ev.text; $("#chat-log").scrollTop = $("#chat-log").scrollHeight; break;
+    case "thought": liveBubble = null; break;
+    case "tool_call": liveBubble = null; Core.set("acting"); addMsg("event", `⚙ ${ev.summary}`); break;
     case "tool_denied": addMsg("event", `⛔ ${ev.tool}: ${ev.reason}`); break;
     case "approval_required": addMsg("event", `⏳ Genehmigung erforderlich: ${ev.approval.summary}`); loadApprovals(); break;
     case "approval_result": addMsg("event", ev.status === "approved" ? "✓ Genehmigt" : `✗ ${ev.status === "expired" ? "Abgelaufen" : "Abgelehnt"}`); loadApprovals(); break;
     case "error": addMsg("event", ev.message); Core.set("error"); break;
     case "final":
       S.conv = ev.conversation_id; store.set("conv", S.conv);
-      addMsg("assistant", ev.text); speak(ev.text); refreshSide(); break;
+      if (liveBubble) liveBubble.textContent = ev.text; else addMsg("assistant", ev.text);
+      liveBubble = null; speak(ev.text); refreshSide(); break;
   }
 }
 

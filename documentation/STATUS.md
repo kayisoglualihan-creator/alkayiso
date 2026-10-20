@@ -10,7 +10,7 @@ Legende: **✅ getestet** = Code vorhanden und durch automatische Tests bzw. ech
 
 | Umgebung | Was | Ergebnis |
 |---|---|---|
-| Linux-Entwicklungscontainer | 88 Backend-Tests (Unit + Integration mit echtem Serverprozess), Ruff-Lint | ✅ alle bestanden |
+| Linux-Entwicklungscontainer | 89 Backend-Tests (Unit + Integration mit echtem Serverprozess), Ruff-Lint | ✅ alle bestanden |
 | Linux, Chromium (Playwright) | Weboberfläche Desktop (1440×900) + iPhone-13-Viewport: Chat, Aufgabe anlegen, Kopplung per Link mit Prüfnummernvergleich, Fernauftrag vom „iPhone“, Genehmigung ablehnen, PC-offline-Anzeige mit Cache | ✅ bestanden, keine JS-Fehler |
 | Linux, Flutter 3.47.7 | `flutter analyze` (keine Befunde), `flutter test` (5 Tests) | ✅ |
 | GitHub Actions `ubuntu-latest` (CI) | Backend-Tests, Lint, Flutter analyze/test | ✅ |
@@ -105,7 +105,7 @@ die Adapter sind mit simulierten Antworten getestet).
 
 ## Bekannte Einschränkungen
 
-* Antworten werden schrittweise (pro Agentenschritt) gestreamt, nicht Token für Token.
+* Token-Streaming ist für Claude umgesetzt (Weboberfläche); OpenAI/Ollama liefern die Antwort pro Schritt.
 * Lokale semantische Suche nutzt gehashte n-Gramm-Vektoren (kein neuronales Embedding) – gut für Wortvarianten, schwächer bei reinen Synonymen.
 * Lokaler Basismodus versteht nur definierte Befehlsmuster; freie Gespräche erfordern Claude/OpenAI/Ollama.
 * Kalenderzeiten mit TZID werden als lokale Zeit interpretiert.
@@ -114,7 +114,7 @@ die Adapter sind mit simulierten Antworten getestet).
 
 1. **Auf deinem PC:** Installer aus dem Windows-Build-Artefakt installieren, `JARVIS.exe --diagnose`, Claude-Schlüssel eintragen, Tailscale + `tailscale_serve.ps1`, iPhone per PWA koppeln. Rückmeldungen → Fehler beheben.
 2. Apple-Developer-Konto → Secrets hinterlegen → iOS-Build liefert TestFlight-IPA.
-3. Token-Streaming für Claude (`client.messages.stream`) in `ai/providers.py` + SSE-Ereignis `text_delta`.
+3. Token-Streaming auch für OpenAI/Ollama und in der Flutter-App (dort aktuell Fernaufträge mit Statusabfrage).
 4. Google/Microsoft OAuth (Loopback-Flow) → E-Mail-Werkzeuge (Senden = Stufe 3) und Kalender schreiben.
 5. Playwright-Werkzeug für Formulare (Stufe 2, Vorschau-Screenshot vor dem Absenden).
 6. APNs-Push (benötigt Apple-Schlüssel; Relay nötig, da der PC selbst Push nicht direkt auslösen sollte ohne Zertifikat).

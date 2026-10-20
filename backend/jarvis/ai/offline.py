@@ -188,7 +188,7 @@ class OfflineProvider(Provider):
     def __init__(self) -> None:
         super().__init__("lokaler-basismodus")
 
-    async def complete(self, system: str, messages: list[dict], tools: list[dict]) -> LLMResponse:
+    async def complete(self, system: str, messages: list[dict], tools: list[dict], on_text=None) -> LLMResponse:
         # Nach Werkzeugausführung: Ergebnisse als Antwort formulieren
         if messages and messages[-1]["role"] == "tool":
             results = []
