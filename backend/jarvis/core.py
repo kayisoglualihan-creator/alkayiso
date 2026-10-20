@@ -15,6 +15,7 @@ from .automation import register as register_automation_tools
 from .config import Settings
 from .database import Database
 from .events import EventBus
+from .integrations.oauth import OAuthManager
 from .jobs import JobManager
 from .memory import MemoryStore
 from .security.pairing import PairingService
@@ -29,7 +30,7 @@ PROVIDERS = ["offline", "anthropic", "openai", "ollama"]
 DEFAULT_MODELS = {"anthropic": "claude-opus-5-5", "openai": "gpt-4o-mini", "ollama": "qwen2.5:7b",
                   "offline": "lokaler-basismodus"}
 MODULES = ["system", "apps", "files", "documents", "browser", "screen", "tasks", "memory", "lists", "health",
-           "finance", "automation", "calendar", "smarthome", "n8n", "core"]
+           "finance", "automation", "calendar", "email", "smarthome", "n8n", "core"]
 DEFAULT_DISABLED_MODULES = ["screen", "smarthome", "n8n"]
 
 
@@ -46,6 +47,7 @@ class Jarvis:
         self.policy = PermissionPolicy(self.db)
         self.approvals = ApprovalManager(self.db, self.bus, settings.approval_ttl)
         self.memory = MemoryStore(self.db)
+        self.oauth = OAuthManager(self.db, self.secrets, settings.port)
         self.services = Services(self.db, self.bus)
         self.registry = build_registry()
         register_automation_tools(self.registry)
@@ -128,19 +130,28 @@ class Jarvis:
         except ProviderError:
             return extractive_summary(text) + "\n(Lokale Zusammenfassung – KI-Anbieter nicht erreichbar)"
 
-    async def today_events(self) -> list[dict]:
-        """Heutige Kalendertermine (leer, wenn kein Kalender verbunden oder nicht erreichbar)."""
+    async def events(self, days: int = 1) -> list[dict]:
+        """Termine aus iCal-Adressen und verbundenen Google-/Microsoft-Kalendern."""
         import datetime as dt
 
         from .integrations.calendar_ics import events_between, fetch_calendars
+        from .integrations.mail_calendar import oauth_events
+        if "calendar" in self.disabled_modules():
+            return []
+        start = dt.datetime.combine(dt.date.today(), dt.time())
+        end = start + dt.timedelta(days=days)
+        out: list[dict] = []
         urls = self.db.get_setting("calendar_ics_urls", []) or []
-        if not urls or "calendar" in self.disabled_modules():
-            return []
-        try:
-            start = dt.datetime.combine(dt.date.today(), dt.time())
-            return events_between(await fetch_calendars(urls), start, start + dt.timedelta(days=1))
-        except Exception:
-            return []
+        if urls:
+            try:
+                out += events_between(await fetch_calendars(urls), start, end)
+            except Exception:
+                pass
+        out += await oauth_events(self, start, end)
+        return sorted(out, key=lambda e: e["start"])
+
+    async def today_events(self) -> list[dict]:
+        return await self.events(1)
 
     async def briefing(self) -> dict:
         return self.services.briefing(await self.today_events())

@@ -10,7 +10,7 @@ Legende: **✅ getestet** = Code vorhanden und durch automatische Tests bzw. ech
 
 | Umgebung | Was | Ergebnis |
 |---|---|---|
-| Linux-Entwicklungscontainer | 89 Backend-Tests (Unit + Integration mit echtem Serverprozess), Ruff-Lint | ✅ alle bestanden |
+| Linux-Entwicklungscontainer | 96 Backend-Tests (Unit + Integration mit echtem Serverprozess), Ruff-Lint | ✅ alle bestanden |
 | Linux, Chromium (Playwright) | Weboberfläche Desktop (1440×900) + iPhone-13-Viewport: Chat, Aufgabe anlegen, Kopplung per Link mit Prüfnummernvergleich, Fernauftrag vom „iPhone“, Genehmigung ablehnen, PC-offline-Anzeige mit Cache | ✅ bestanden, keine JS-Fehler |
 | Linux, Flutter 3.47.7 | `flutter analyze` (keine Befunde), `flutter test` (5 Tests) | ✅ |
 | GitHub Actions `ubuntu-latest` (CI) | Backend-Tests, Lint, Flutter analyze/test | ✅ |
@@ -91,7 +91,7 @@ die Adapter sind mit simulierten Antworten getestet).
 | Funktion | Status |
 |---|---|
 | Home Assistant, n8n | 🟡 implementiert, nicht gegen echte Instanzen getestet |
-| Gmail/Google Calendar (OAuth), Outlook/Microsoft Graph | ⛔ eigene OAuth-App-Registrierung nötig (siehe INTEGRATIONEN.md) |
+| Gmail/Google Calendar, Outlook/Microsoft Graph (OAuth mit PKCE): lesen, Entwurf, Senden (Stufe 3), Termine lesen/anlegen | ✅ gegen simulierte APIs getestet · ⛔ echte Nutzung braucht deine eigene Client-ID (Anleitung INTEGRATIONEN.md) |
 | Messenger | ⛔ |
 
 ## Phase 8 – Auslieferung
@@ -115,7 +115,7 @@ die Adapter sind mit simulierten Antworten getestet).
 1. **Auf deinem PC:** Installer aus dem Windows-Build-Artefakt installieren, `JARVIS.exe --diagnose`, Claude-Schlüssel eintragen, Tailscale + `tailscale_serve.ps1`, iPhone per PWA koppeln. Rückmeldungen → Fehler beheben.
 2. Apple-Developer-Konto → Secrets hinterlegen → iOS-Build liefert TestFlight-IPA.
 3. Token-Streaming auch für OpenAI/Ollama und in der Flutter-App (dort aktuell Fernaufträge mit Statusabfrage).
-4. Google/Microsoft OAuth (Loopback-Flow) → E-Mail-Werkzeuge (Senden = Stufe 3) und Kalender schreiben.
+4. Google-/Microsoft-Client-ID anlegen und verbinden (Anleitung INTEGRATIONEN.md).
 5. Playwright-Werkzeug für Formulare (Stufe 2, Vorschau-Screenshot vor dem Absenden).
 6. APNs-Push (benötigt Apple-Schlüssel; Relay nötig, da der PC selbst Push nicht direkt auslösen sollte ohne Zertifikat).
 7. Optionale neuronale Embeddings über Ollama (`nomic-embed-text`) als zweiter Embedder.

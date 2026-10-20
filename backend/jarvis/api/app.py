@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from fastapi import Depends, FastAPI, File, Query, Request, UploadFile, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -135,7 +135,7 @@ SETTINGS_KEYS = {
     "allowed_roots": list, "app_aliases": dict, "public_url": str, "user_name": str, "language": str,
     "tts_engine": str, "whisper_model": str, "piper_model_path": str, "elevenlabs_voice_id": str,
     "voice_rate": (int, float), "voice_volume": (int, float), "voice_name": str, "wake_word_enabled": bool,
-    "home_assistant_url": str, "calendar_ics_urls": list, "n8n_webhooks": dict, "close_to_tray": bool, "setup_completed": bool,
+    "home_assistant_url": str, "calendar_ics_urls": list, "n8n_webhooks": dict, "close_to_tray": bool, "setup_completed": bool, "google_client_id": str, "microsoft_client_id": str,
 }
 
 
@@ -309,6 +309,47 @@ def create_app(settings: Settings | None = None, *, dry_run: bool = False) -> Fa
         j.db.set_setting("remote_access_enabled", enabled)
         j.db.audit("desktop", "remote_access_" + ("enabled" if enabled else "disabled"), risk=3)
         return {"enabled": enabled}
+
+    # ------------------------------------------------------------------ Konten (OAuth: Google, Microsoft)
+    @app.get("/api/integrations", tags=["integrations"])
+    def integrations(request: Request, _: Principal = Depends(admin)):
+        j = app_of(request)
+        return {"accounts": j.oauth.status(),
+                "redirect_uris": {p: j.oauth.redirect_uri(p) for p in ("google", "microsoft")}}
+
+    @app.post("/api/integrations/{provider}/connect", tags=["integrations"])
+    def integration_connect(provider: str, request: Request, _: Principal = Depends(admin)):
+        from ..integrations.oauth import OAuthError
+        try:
+            return {"url": app_of(request).oauth.start(provider)}
+        except OAuthError as exc:
+            raise ApiError(400, "oauth_not_configured", str(exc))
+
+    @app.delete("/api/integrations/{provider}", tags=["integrations"])
+    def integration_disconnect(provider: str, request: Request, _: Principal = Depends(admin)):
+        j = app_of(request)
+        j.oauth.disconnect(provider)
+        j.db.audit("desktop", "oauth_disconnected", {"provider": provider}, 2)
+        return {"connected": False}
+
+    @app.get("/oauth/callback", include_in_schema=False)
+    async def oauth_callback(request: Request, state: str = "", code: str = "", error: str = ""):
+        from ..integrations.oauth import OAuthError
+        page = ('<!doctype html><meta charset="utf-8"><title>JARVIS</title><body style="background:#02060d;color:#e6f6ff;'
+                'font-family:Segoe UI,sans-serif;display:grid;place-items:center;height:100vh"><div style="text-align:center">'
+                '<h2 style="color:#00e5ff;letter-spacing:.2em">J.A.R.V.I.S.</h2><p>{msg}</p></div>')
+        if not is_local_request(request):  # Rückleitung erfolgt immer im Browser auf diesem PC
+            return HTMLResponse(page.format(msg="Nur lokal am PC möglich."), status_code=403)
+        if error or not code:
+            return HTMLResponse(page.format(msg=f"Anmeldung abgebrochen ({error or 'kein Code'})."), status_code=400)
+        j = app_of(request)
+        try:
+            provider = await j.oauth.finish(state, code)
+        except OAuthError as exc:
+            return HTMLResponse(page.format(msg=str(exc)), status_code=400)
+        j.db.audit("desktop", "oauth_connected", {"provider": provider}, 3)
+        j.bus.publish("integrations.changed", {"provider": provider}, admin_only=True)
+        return HTMLResponse(page.format(msg="Konto verbunden. Du kannst dieses Fenster schließen."))
 
     @app.get("/api/system/autostart", tags=["settings"])
     def autostart_get(_: Principal = Depends(admin)):

@@ -23,6 +23,7 @@ KNOWN_SECRETS = {
     "elevenlabs_api_key": "ELEVENLABS_API_KEY",
     "home_assistant_token": "HOME_ASSISTANT_TOKEN",
     "n8n_webhook_secret": "N8N_WEBHOOK_SECRET",
+    "google_client_secret": "GOOGLE_CLIENT_SECRET",
 }
 
 

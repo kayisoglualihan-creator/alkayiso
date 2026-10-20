@@ -156,11 +156,10 @@ def register(reg: ToolRegistry) -> None:
               params({"days": {"type": "integer", "minimum": 1, "maximum": 31}}), LEVEL_READ, module="calendar")
     async def calendar_events(ctx: ToolContext, days: int = 1) -> ToolResult:
         urls = ctx.app.db.get_setting("calendar_ics_urls", []) or []
-        if not urls:
-            return ToolResult("Kein Kalender verbunden. In den Einstellungen eine iCal-Adresse hinterlegen "
-                              "(Google: Privatadresse im iCal-Format, Outlook: veröffentlichter ICS-Link).", ok=False)
-        start = dt.datetime.combine(dt.date.today(), dt.time())
-        events = events_between(await fetch_calendars(urls), start, start + dt.timedelta(days=days))
+        if not urls and not ctx.app.oauth.connected():
+            return ToolResult("Kein Kalender verbunden. In den Einstellungen Google/Microsoft verbinden oder eine "
+                              "iCal-Adresse hinterlegen.", ok=False)
+        events = await ctx.app.events(days)
         if not events:
             return ToolResult("Keine Termine im Zeitraum.", [])
         return ToolResult(format_events(events), [{**e, "start": e["start"].isoformat(), "end": e["end"].isoformat()}

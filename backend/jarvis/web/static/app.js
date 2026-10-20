@@ -117,6 +117,7 @@ function onEvent(ev) {
     case "notification": onNotification(d); break;
     case "pairing.claimed": showPairingRequest(d); break;
     case "devices.changed": case "device.revoked": if (S.mode === "admin") loadDevices(); break;
+    case "integrations.changed": toast("Konto verbunden"); if ($("#view-settings").classList.contains("active")) loadAccounts(); break;
     case "voice.state": Core.set({ listening: "listening", thinking: "thinking", error: "error" }[d.state] || "idle"); break;
     case "voice.transcript": addMsg("user", "🎙 " + d.text); break;
     case "voice.reply": {
@@ -578,7 +579,7 @@ async function loadSettings() {
     row.querySelector(".del")?.addEventListener("click", async () => { await api(`/api/secrets/${k}`, { method: "DELETE" }); loadSettings(); });
     $("#secret-list").appendChild(row);
   }
-  const labels = { system: "System", apps: "Programme", files: "Dateien", documents: "Dokumente", browser: "Browser/Web", screen: "Bildschirm/Tastatur", tasks: "Aufgaben", memory: "Gedächtnis", lists: "Listen", health: "Gewohnheiten", finance: "Finanzen", automation: "Automationen", calendar: "Kalender", smarthome: "Smart Home", n8n: "n8n", core: "Kern" };
+  const labels = { system: "System", apps: "Programme", files: "Dateien", documents: "Dokumente", browser: "Browser/Web", screen: "Bildschirm/Tastatur", tasks: "Aufgaben", memory: "Gedächtnis", lists: "Listen", health: "Gewohnheiten", finance: "Finanzen", automation: "Automationen", calendar: "Kalender", email: "E-Mail", smarthome: "Smart Home", n8n: "n8n", core: "Kern" };
   $("#module-list").innerHTML = "";
   st.modules.forEach((m) => {
     const lab = el(`<label class="switch"><input type="checkbox" ${st.disabled_modules.includes(m) ? "" : "checked"} ${m === "core" ? "disabled" : ""}><span></span> ${labels[m] || m}</label>`);
@@ -597,6 +598,7 @@ async function loadSettings() {
     try { await api("/api/voice/wakeword", { method: "POST", body: { enabled: e.target.checked } }); toast(e.target.checked ? "Wake Word am PC aktiv" : "Wake Word aus"); }
     catch (err) { e.target.checked = false; toast(err.message); }
   };
+  loadAccounts();
   const tools = await api("/api/tools");
   $("#tool-list").innerHTML = "";
   tools.forEach((t) => {
@@ -609,6 +611,22 @@ async function loadSettings() {
   const u = await api("/api/usage");
   $("#usage").innerHTML = `${u.total.calls} Aufrufe · ${u.total.input_tokens} Eingabe- / ${u.total.output_tokens} Ausgabe-Tokens · ca. ${u.total.cost.toFixed(4)} USD` +
     u.by_model.map((m) => `<div class="muted">${esc(m.provider)}/${esc(m.model)}: ${m.calls} Aufrufe, ${m.cost.toFixed(4)} USD</div>`).join("");
+}
+async function loadAccounts() {
+  const box = $("#account-list"); if (!box) return;
+  const r = await api("/api/integrations"); box.innerHTML = "";
+  for (const [p, a] of Object.entries(r.accounts)) {
+    const row = el(`<div class="stack-form" style="margin-bottom:12px"><b>${esc(a.label)}</b>
+      <div class="small muted">Weiterleitungs-URI für die App-Registrierung: <code>${esc(r.redirect_uris[p])}</code></div>
+      <div class="row-form"><input placeholder="Client-ID" value="${esc(S.settings?.values?.[p + "_client_id"] || "")}" class="cid">
+        <button class="ghost small save">Speichern</button></div>
+      <div class="row-form">${a.connected ? `<span class="small" style="flex:1">✓ verbunden ${esc(a.account)}</span><button class="danger small disc">Trennen</button>`
+        : `<span class="small muted" style="flex:1">nicht verbunden</span><button class="primary small conn" ${a.client_id_set ? "" : "disabled"}>Verbinden</button>`}</div></div>`);
+    row.querySelector(".save").onclick = async () => { await api("/api/settings", { method: "PATCH", body: { [p + "_client_id"]: row.querySelector(".cid").value.trim() } }); S.settings = await api("/api/settings"); toast("Gespeichert"); loadAccounts(); };
+    row.querySelector(".conn")?.addEventListener("click", async () => { try { const { url } = await api(`/api/integrations/${p}/connect`, { method: "POST" }); window.open(url, "_blank", "width=520,height=700"); toast("Anmeldung im neuen Fenster abschließen"); } catch (e) { toast(e.message); } });
+    row.querySelector(".disc")?.addEventListener("click", async () => { await api(`/api/integrations/${p}`, { method: "DELETE" }); loadAccounts(); });
+    box.appendChild(row);
+  }
 }
 function toggleProviderFields() {
   const p = $("#set-provider").value;
