@@ -23,14 +23,22 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--diagnose", action="store_true", help="Umgebung prüfen und Hinweise ausgeben")
     args = parser.parse_args(argv)
 
-    if sys.stdout is None:  # Fensteranwendung (PyInstaller, console=False): Ausgaben in Logdatei
+    gui_mode = sys.stdout is None  # Fensteranwendung (PyInstaller, console=False)
+    if gui_mode:
         from .config import load_settings as _ls
-        log_file = open(_ls().data_dir / "jarvis.log", "a", encoding="utf-8", buffering=1)  # noqa: SIM115
+        name = "diagnose.txt" if args.diagnose else "jarvis.log"
+        log_path = _ls().data_dir / name
+        log_file = open(log_path, "w" if args.diagnose else "a", encoding="utf-8", buffering=1)  # noqa: SIM115
         sys.stdout = sys.stderr = log_file
 
     if args.diagnose:
         from .diagnose import main as diagnose
-        return diagnose()
+        code = diagnose()
+        if gui_mode:  # Ergebnis im Editor anzeigen, da es kein Konsolenfenster gibt
+            log_file.close()
+            if hasattr(os, "startfile"):
+                os.startfile(str(log_path))  # type: ignore[attr-defined]
+        return code
 
     from .config import load_settings
     from .windows_agent import open_desktop_ui, run_tray, set_autostart
