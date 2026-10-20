@@ -1,0 +1,27 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+build/
+dist/
+*.spec.bak
+# Lokale Daten & Geheimnisse – niemals committen
+.env
+*.db
+*.db-wal
+*.db-shm
+secrets.bin
+signing.key
+local_admin_token
+data/
+# Flutter
+apps/jarvis_app/.dart_tool/
+apps/jarvis_app/build/
+apps/jarvis_app/.flutter-plugins*
+apps/jarvis_app/ios/Pods/
+apps/jarvis_app/ios/Flutter/ephemeral/
+apps/jarvis_app/windows/flutter/ephemeral/
+apps/jarvis_app/.packages
+# Installer-Ausgabe
+installers/output/

@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#02060d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="JARVIS">
+<title>J.A.R.V.I.S.</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/static/icons/icon-180.png">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div id="bg-grid"></div>
+
+<!-- Anmeldung / Kopplung -->
+<section id="auth-screen" class="screen hidden">
+  <div class="auth-card glass">
+    <div class="logo">J.A.R.V.I.S.</div>
+    <p class="muted">Just A Rather Very Intelligent System</p>
+    <div id="auth-body"></div>
+  </div>
+</section>
+
+<!-- Hauptanwendung -->
+<section id="app" class="hidden">
+  <header class="topbar glass">
+    <div class="brand"><span class="dot" id="conn-dot"></span><span>J.A.R.V.I.S.</span></div>
+    <div class="top-status" id="top-status">Verbinde…</div>
+    <div class="top-actions">
+      <button class="icon-btn" id="btn-notif" title="Benachrichtigungen" aria-label="Benachrichtigungen">
+        <svg viewBox="0 0 24 24"><path d="M12 22a2.5 2.5 0 0 0 2.4-2h-4.8a2.5 2.5 0 0 0 2.4 2Zm7-6V11a7 7 0 0 0-5-6.7V3a2 2 0 1 0-4 0v1.3A7 7 0 0 0 5 11v5l-2 2v1h18v-1Z"/></svg>
+        <span class="badge hidden" id="notif-badge">0</span>
+      </button>
+    </div>
+  </header>
+
+  <div id="offline-banner" class="banner hidden">PC offline – zeige zwischengespeicherte Daten. Fernbefehle sind nicht möglich.</div>
+  <div id="approvals-bar"></div>
+
+  <nav class="sidenav glass" id="nav">
+    <button data-view="home" class="active"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3"/></svg><span>Core</span></button>
+    <button data-view="tasks"><svg viewBox="0 0 24 24"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg><span>Aufgaben</span></button>
+    <button data-view="memory"><svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-4 12.7V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.3A7 7 0 0 0 12 2Zm-3 18h6v2H9z"/></svg><span>Gedächtnis</span></button>
+    <button data-view="remote"><svg viewBox="0 0 24 24"><path d="M4 5h16v10H4zM2 17h20v2H2z"/></svg><span>PC</span></button>
+    <button data-view="automations"><svg viewBox="0 0 24 24"><path d="M13 2 3 14h7l-1 8 10-12h-7z"/></svg><span>Abläufe</span></button>
+    <button data-view="history"><svg viewBox="0 0 24 24"><path d="M13 3a9 9 0 1 0 9 9h-2a7 7 0 1 1-7-7V3Zm-1 5v5l4 2 .8-1.6-2.8-1.4V8z"/></svg><span>Verlauf</span></button>
+    <button data-view="settings"><svg viewBox="0 0 24 24"><path d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7 7 0 0 0-1.7-1L15 3h-4l-.4 2.7a7 7 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7 7 0 0 0 1.7 1L11 21h4l.4-2.7a7 7 0 0 0 1.7-1l2.5 1 2-3.5ZM13 15.5A3.5 3.5 0 1 1 16.5 12 3.5 3.5 0 0 1 13 15.5Z"/></svg><span>Setup</span></button>
+  </nav>
+
+  <main id="views">
+    <!-- CORE / DASHBOARD -->
+    <div class="view active" id="view-home">
+      <div class="home-grid">
+        <div class="core-panel glass">
+          <canvas id="core" aria-label="Jarvis-Core"></canvas>
+          <div class="core-state" id="core-state">Bereit</div>
+          <div class="voice-row">
+            <button id="btn-mic" class="mic-btn" aria-label="Sprechen (gedrückt halten oder tippen)">
+              <svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.9V21h2v-2.1A7 7 0 0 0 19 12Z"/></svg>
+            </button>
+            <label class="switch desktop-only" title="Wake Word 'Hey Jarvis' (Browser-Spracherkennung)"><input type="checkbox" id="wake-toggle"><span></span> Wake Word</label>
+            <label class="switch" title="Antworten vorlesen"><input type="checkbox" id="tts-toggle" checked><span></span> Sprache</label>
+          </div>
+        </div>
+        <div class="chat-panel glass">
+          <div class="chat-head">
+            <span id="chat-title">Unterhaltung</span>
+            <button class="ghost small" id="btn-new-chat">Neu</button>
+          </div>
+          <div id="chat-log" class="chat-log"></div>
+          <form id="chat-form" class="chat-form">
+            <input id="chat-input" autocomplete="off" placeholder="Nachricht an Jarvis … (z. B. „Öffne VS Code“)" maxlength="5000">
+            <button type="submit" class="primary" id="chat-send">Senden</button>
+          </form>
+        </div>
+        <div class="side-stack">
+          <div class="glass card" id="card-system"><h3>System</h3><div class="stats" id="sys-stats">–</div></div>
+          <div class="glass card"><h3>Heute</h3><div id="briefing" class="muted">–</div></div>
+          <div class="glass card"><h3>Aktive Aufträge</h3><div id="active-jobs" class="muted">Keine</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AUFGABEN -->
+    <div class="view" id="view-tasks">
+      <div class="cols">
+        <div class="glass card">
+          <h3>Aufgaben</h3>
+          <form id="task-form" class="row-form">
+            <input id="task-title" placeholder="Neue Aufgabe" required maxlength="300">
+            <input id="task-due" placeholder="Fällig (z. B. morgen 9 Uhr)">
+            <select id="task-prio"><option value="2">normal</option><option value="3">hoch</option><option value="1">niedrig</option></select>
+            <button class="primary">+</button>
+          </form>
+          <div class="filter-row"><button class="chip active" data-tfilter="open">Offen</button><button class="chip" data-tfilter="done">Erledigt</button><button class="chip" data-tfilter="all">Alle</button></div>
+          <ul id="task-list" class="list"></ul>
+        </div>
+        <div class="glass card">
+          <h3>Erinnerungen</h3>
+          <form id="reminder-form" class="row-form">
+            <input id="rem-text" placeholder="Woran erinnern?" required maxlength="500">
+            <input id="rem-when" placeholder="Wann? (in 20 minuten)" required>
+            <select id="rem-repeat"><option value="">einmalig</option><option value="daily">täglich</option><option value="weekdays">werktags</option><option value="weekly">wöchentlich</option></select>
+            <button class="primary">+</button>
+          </form>
+          <ul id="reminder-list" class="list"></ul>
+          <h3 class="mt">Listen</h3>
+          <form id="list-form" class="row-form">
+            <input id="list-name" value="einkauf" maxlength="40" style="max-width:110px">
+            <input id="list-text" placeholder="Eintrag" required maxlength="300">
+            <button class="primary">+</button>
+          </form>
+          <ul id="list-items" class="list"></ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- GEDÄCHTNIS -->
+    <div class="view" id="view-memory">
+      <div class="glass card">
+        <h3>Langzeitgedächtnis</h3>
+        <p class="muted small">Jarvis speichert nur, was du ihm mitteilst. Einträge können korrigiert oder gelöscht werden.</p>
+        <form id="memory-form" class="row-form">
+          <input id="mem-content" placeholder="Neue Erinnerung (z. B. Ich arbeite gerade an Projekt Atlas)" required maxlength="2000">
+          <select id="mem-cat"></select>
+          <button class="primary">Merken</button>
+        </form>
+        <div class="row-form"><input id="mem-search" placeholder="Semantische Suche …"><button class="ghost admin-only" id="btn-mem-clear">Alles löschen</button></div>
+        <ul id="memory-list" class="list"></ul>
+      </div>
+    </div>
+
+    <!-- PC / FERNSTEUERUNG / GERÄTE -->
+    <div class="view" id="view-remote">
+      <div class="cols">
+        <div class="glass card">
+          <h3>PC-Status</h3>
+          <div id="pc-status" class="stats">–</div>
+          <h3 class="mt">Schnellbefehle</h3>
+          <div class="quick-grid" id="quick-cmds">
+            <button class="chip" data-cmd="Wie hoch ist die CPU-Auslastung meines Computers?">CPU/RAM</button>
+            <button class="chip" data-cmd="Öffne Visual Studio Code">VS Code öffnen</button>
+            <button class="chip" data-cmd="Fasse die neueste PDF-Datei zusammen">Neueste PDF zusammenfassen</button>
+            <button class="chip" data-cmd="Starte den Workflow Arbeitsbeginn">Arbeitsbeginn</button>
+            <button class="chip" data-cmd="Erstelle eine Excel-Tabelle mit Spalten Datum, Aufgabe, Status">Excel-Tabelle</button>
+            <button class="chip" data-cmd="Guten Morgen">Tagesübersicht</button>
+            <button class="chip" data-cmd="Zeige die laufenden Prozesse">Prozesse</button>
+            <button class="chip" data-cmd="Sperre den PC">PC sperren</button>
+          </div>
+          <h3 class="mt">Aufträge</h3>
+          <ul id="job-list" class="list"></ul>
+        </div>
+        <div class="glass card admin-only">
+          <h3>iPhone verbinden</h3>
+          <div id="tailscale-box" class="small muted">Prüfe Tailscale …</div>
+          <button class="primary mt" id="btn-pair">QR-Code anzeigen</button>
+          <div id="pair-box"></div>
+          <h3 class="mt">Gekoppelte Geräte</h3>
+          <ul id="device-list" class="list"></ul>
+          <label class="switch mt"><input type="checkbox" id="remote-toggle"><span></span> Fernzugriff erlaubt</label>
+        </div>
+        <div class="glass card device-only">
+          <h3>Dieses Gerät</h3>
+          <div id="device-info" class="small muted"></div>
+          <button class="ghost mt" id="btn-unpair">Kopplung auf diesem Gerät entfernen</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- AUTOMATISIERUNGEN -->
+    <div class="view" id="view-automations">
+      <div class="glass card">
+        <h3>Automatisierungen &amp; Workflows</h3>
+        <ul id="auto-list" class="list"></ul>
+        <details class="admin-only mt"><summary>Neue Automatisierung</summary>
+          <form id="auto-form" class="stack-form">
+            <input id="auto-name" placeholder="Name" required>
+            <input id="auto-schedule" placeholder="Zeitplan: daily 08:00 | weekdays 07:30 | every 2h | manual" required>
+            <select id="auto-type"><option value="briefing">Tagesübersicht</option><option value="reminder">Benachrichtigung</option><option value="prompt">KI-Auftrag</option><option value="workflow">Workflow (JSON-Schritte)</option></select>
+            <textarea id="auto-payload" rows="4" placeholder='Payload (JSON), z. B. {"text":"Wasser trinken"} oder {"prompt":"Fasse meine Aufgaben zusammen"} oder {"steps":[{"tool":"open_app","args":{"name":"vscode"}}]}'></textarea>
+            <button class="primary">Anlegen</button>
+          </form>
+        </details>
+      </div>
+    </div>
+
+    <!-- VERLAUF -->
+    <div class="view" id="view-history">
+      <div class="cols">
+        <div class="glass card"><h3>Unterhaltungen</h3><ul id="conv-list" class="list"></ul></div>
+        <div class="glass card admin-only"><h3>Aktionsprotokoll</h3><ul id="audit-list" class="list small"></ul>
+          <h3 class="mt">Rückgängig</h3><ul id="undo-list" class="list small"></ul></div>
+        <div class="glass card"><h3>Benachrichtigungen</h3><ul id="notif-list" class="list small"></ul></div>
+      </div>
+    </div>
+
+    <!-- EINSTELLUNGEN -->
+    <div class="view" id="view-settings">
+      <div class="cols admin-only">
+        <div class="glass card">
+          <h3>KI-Modell</h3>
+          <div class="stack-form">
+            <label>Anbieter <select id="set-provider"></select></label>
+            <label>Modell <input id="set-model"></label>
+            <label class="hide-unless-anthropic">Anthropic-Effort <select id="set-effort"><option>low</option><option>medium</option><option>high</option><option>xhigh</option><option>max</option></select></label>
+            <label class="hide-unless-ollama">Ollama-URL <input id="set-ollama"></label>
+            <label class="hide-unless-openai">OpenAI-Basis-URL <input id="set-openai"></label>
+            <div class="row-form"><button class="primary" id="btn-save-ai">Speichern</button><button class="ghost" id="btn-test-ai">Verbindung testen</button></div>
+            <div id="ai-test" class="small muted"></div>
+          </div>
+          <h3 class="mt">API-Schlüssel</h3>
+          <p class="small muted">Gespeichert im <span id="secret-backend">Schlüsselspeicher</span> – nie im Klartext angezeigt.</p>
+          <div id="secret-list"></div>
+          <h3 class="mt">Nutzung &amp; Kosten</h3>
+          <div id="usage" class="small"></div>
+        </div>
+        <div class="glass card">
+          <h3>Module</h3><div id="module-list" class="module-grid"></div>
+          <h3 class="mt">Freigegebene Ordner</h3>
+          <textarea id="set-roots" rows="4"></textarea>
+          <button class="ghost" id="btn-save-roots">Ordner speichern</button>
+          <h3 class="mt">Sprache</h3>
+          <div class="stack-form">
+            <label>Stimme (Browser) <select id="set-voice"></select></label>
+            <label>Tempo <input type="range" id="set-rate" min="0.6" max="1.6" step="0.05" value="1"></label>
+            <label>Lautstärke <input type="range" id="set-volume" min="0" max="1" step="0.05" value="1"></label>
+            <div id="voice-status" class="small muted"></div>
+          </div>
+        </div>
+        <div class="glass card">
+          <h3>Berechtigungen</h3>
+          <p class="small muted">Stufe 1 = lesen, Stufe 2 = ändern (Genehmigung), Stufe 3 = kritisch (immer Bestätigung mit „BESTÄTIGEN“).</p>
+          <ul id="tool-list" class="list small"></ul>
+        </div>
+      </div>
+      <div class="glass card device-only"><h3>Einstellungen</h3><p class="muted">Einstellungen werden aus Sicherheitsgründen nur am PC geändert.</p>
+        <label>Stimme <select id="set-voice-dev"></select></label></div>
+    </div>
+  </main>
+</section>
+
+<div id="modal" class="modal hidden"><div class="modal-card glass" id="modal-card"></div></div>
+<div id="toast" class="toast hidden"></div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
