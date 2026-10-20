@@ -41,6 +41,7 @@ iPhone (App / PWA) ──► Tailscale (privat, WireGuard) ──► Tailscale S
 
 ## Dokumentation
 
+* **[Erste Schritte – Schritt für Schritt](documentation/ERSTE_SCHRITTE.md)**
 * [Installation Windows](documentation/INSTALLATION_WINDOWS.md)
 * [Installation iPhone (App, TestFlight, PWA)](documentation/INSTALLATION_IPHONE.md)
 * [Tailscale & sicherer Fernzugriff](documentation/TAILSCALE.md)
