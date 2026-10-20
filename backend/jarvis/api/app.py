@@ -136,6 +136,7 @@ SETTINGS_KEYS = {
     "tts_engine": str, "whisper_model": str, "piper_model_path": str, "elevenlabs_voice_id": str,
     "voice_rate": (int, float), "voice_volume": (int, float), "voice_name": str, "wake_word_enabled": bool,
     "home_assistant_url": str, "calendar_ics_urls": list, "n8n_webhooks": dict, "close_to_tray": bool, "setup_completed": bool, "google_client_id": str, "microsoft_client_id": str,
+    "browser_headless": bool, "browser_executable": str, "browser_allow_private": bool,
 }
 
 

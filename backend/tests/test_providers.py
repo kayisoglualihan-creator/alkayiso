@@ -186,3 +186,40 @@ def test_anthropic_token_streaming():
     out = run(p.complete("s", [{"role": "user", "content": "x"}], [], on_text=on_text))
     assert chunks == ["Guten ", "Morgen."] and out.text == "Guten Morgen." and out.output_tokens == 4
     assert seen["model"] == "claude-opus-5-5"
+
+
+def test_openai_streaming_with_tool_call():
+    sse = "\n".join([
+        'data: {"choices":[{"delta":{"content":"Ich "}}]}', "",
+        'data: {"choices":[{"delta":{"content":"schaue nach."}}]}', "",
+        'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"c1","function":{"name":"get_","arguments":"{\\"a"}}]}}]}', "",
+        'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"time","arguments":"\\":1}"}}]},"finish_reason":"tool_calls"}]}', "",
+        'data: {"choices":[],"usage":{"prompt_tokens":7,"completion_tokens":5}}', "",
+        "data: [DONE]", ""])
+
+    def handler(request):
+        assert json.loads(request.content)["stream"] is True
+        return httpx.Response(200, text=sse, headers={"content-type": "text/event-stream"})
+
+    p = OpenAIProvider("k", transport=httpx.MockTransport(handler))
+    chunks = []
+
+    async def on_text(t):
+        chunks.append(t)
+
+    out = run(p.complete("s", [{"role": "user", "content": "x"}], TOOLS, on_text=on_text))
+    assert chunks == ["Ich ", "schaue nach."]
+    assert out.tool_calls[0].name == "get_time" and out.tool_calls[0].arguments == {"a": 1} and out.input_tokens == 7
+
+
+def test_ollama_streaming():
+    lines = "\n".join([json.dumps({"message": {"content": "Hal"}}), json.dumps({"message": {"content": "lo"}}),
+                       json.dumps({"message": {"content": ""}, "done": True, "prompt_eval_count": 3, "eval_count": 2})])
+    p = OllamaProvider(transport=httpx.MockTransport(lambda r: httpx.Response(200, text=lines)))
+    chunks = []
+
+    async def on_text(t):
+        chunks.append(t)
+
+    out = run(p.complete("s", [{"role": "user", "content": "x"}], [], on_text=on_text))
+    assert "".join(chunks) == "Hallo" and out.text == "Hallo" and out.output_tokens == 2

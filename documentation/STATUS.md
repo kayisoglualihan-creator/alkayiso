@@ -10,7 +10,7 @@ Legende: **✅ getestet** = Code vorhanden und durch automatische Tests bzw. ech
 
 | Umgebung | Was | Ergebnis |
 |---|---|---|
-| Linux-Entwicklungscontainer | 96 Backend-Tests (Unit + Integration mit echtem Serverprozess), Ruff-Lint | ✅ alle bestanden |
+| Linux-Entwicklungscontainer | 100 Backend-Tests (Unit + Integration mit echtem Serverprozess), Ruff-Lint | ✅ alle bestanden |
 | Linux, Chromium (Playwright) | Weboberfläche Desktop (1440×900) + iPhone-13-Viewport: Chat, Aufgabe anlegen, Kopplung per Link mit Prüfnummernvergleich, Fernauftrag vom „iPhone“, Genehmigung ablehnen, PC-offline-Anzeige mit Cache | ✅ bestanden, keine JS-Fehler |
 | Linux, Flutter 3.47.7 | `flutter analyze` (keine Befunde), `flutter test` (5 Tests) | ✅ |
 | GitHub Actions `ubuntu-latest` (CI) | Backend-Tests, Lint, Flutter analyze/test | ✅ |
@@ -53,7 +53,7 @@ die Adapter sind mit simulierten Antworten getestet).
 | Web: öffnen, Seite lesen (SSRF-Schutz), Suche (DuckDuckGo) | ✅ Lesen/Schutz · 🟡 Suche (Internet in Tests nicht genutzt) |
 | Screenshot, Texteingabe (Modul standardmäßig aus) | 🟡 |
 | PC sperren / herunterfahren (Stufe 2/3) | 🟡 nur Windows |
-| Playwright-Browserautomatisierung (Formulare) | ⏳ |
+| Playwright-Browserautomatisierung: Seite öffnen, Elemente analysieren, Formulare ausfüllen (Vorschau), Links klicken, Absenden nur kritisch | ✅ mit echtem Chromium getestet · 🟡 mit Edge auf deinem PC |
 
 ## Phase 4 – Sicherer Fernzugriff
 
@@ -105,19 +105,23 @@ die Adapter sind mit simulierten Antworten getestet).
 
 ## Bekannte Einschränkungen
 
-* Token-Streaming ist für Claude umgesetzt (Weboberfläche); OpenAI/Ollama liefern die Antwort pro Schritt.
+* Token-Streaming für Claude, OpenAI und Ollama in der Weboberfläche; die Flutter-App zeigt Fernaufträge mit Statusabfrage (ohne Wort-für-Wort-Anzeige).
 * Lokale semantische Suche nutzt gehashte n-Gramm-Vektoren (kein neuronales Embedding) – gut für Wortvarianten, schwächer bei reinen Synonymen.
 * Lokaler Basismodus versteht nur definierte Befehlsmuster; freie Gespräche erfordern Claude/OpenAI/Ollama.
 * Kalenderzeiten mit TZID werden als lokale Zeit interpretiert.
 
 ## Nächste Schritte (Fortsetzungsanweisungen)
 
-1. **Auf deinem PC:** Installer aus dem Windows-Build-Artefakt installieren, `JARVIS.exe --diagnose`, Claude-Schlüssel eintragen, Tailscale + `tailscale_serve.ps1`, iPhone per PWA koppeln. Rückmeldungen → Fehler beheben.
-2. Apple-Developer-Konto → Secrets hinterlegen → iOS-Build liefert TestFlight-IPA.
-3. Token-Streaming auch für OpenAI/Ollama und in der Flutter-App (dort aktuell Fernaufträge mit Statusabfrage).
-4. Google-/Microsoft-Client-ID anlegen und verbinden (Anleitung INTEGRATIONEN.md).
-5. Playwright-Werkzeug für Formulare (Stufe 2, Vorschau-Screenshot vor dem Absenden).
-6. APNs-Push (benötigt Apple-Schlüssel; Relay nötig, da der PC selbst Push nicht direkt auslösen sollte ohne Zertifikat).
-7. Optionale neuronale Embeddings über Ollama (`nomic-embed-text`) als zweiter Embedder.
+**Für dich (nur mit deinen Geräten/Konten möglich):**
+1. Installer aus *Actions → Windows-Build → Artefakt* installieren → der Einrichtungsassistent führt durch KI-Schlüssel, Ordner, Autostart.
+2. Tailscale auf PC und iPhone (gleiches Konto) → Startmenü „Tailscale Serve einrichten“ → QR-Code mit dem iPhone scannen (Web-App).
+3. Optional: Google-/Microsoft-Client-ID anlegen (INTEGRATIONEN.md) → E-Mail & Kalender verbinden.
+4. Optional: Apple-Developer-Konto + GitHub-Secrets → TestFlight-Build der nativen App (INSTALLATION_IPHONE.md).
+
+**Weiterentwicklung:**
+1. Rückmeldungen vom echten PC/iPhone einarbeiten.
+2. APNs-Push für die native App (braucht Apple-Schlüssel).
+3. Wort-für-Wort-Anzeige auch in der Flutter-App (SSE-Endpunkt `/api/chat/stream` nutzen).
+4. Optionale neuronale Embeddings über Ollama (`nomic-embed-text`) als zweiter Embedder.
 
 Einstieg für Entwickler: `documentation/ARCHITEKTUR.md`; Tests: `scripts/run_tests.sh`.

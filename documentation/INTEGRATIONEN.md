@@ -12,7 +12,7 @@ Alle Module lassen sich unter *Setup → Module* einzeln aktivieren/deaktivieren
 | Home Assistant (Smart Home) | ✅ implementiert, ungetestet gegen echte Instanz | Setup: `home_assistant_url` (per API `PATCH /api/settings`), Long-Lived-Token als Schlüssel `home_assistant_token` |
 | n8n | ✅ implementiert, ungetestet gegen echte Instanz | `PATCH /api/settings {"n8n_webhooks": {"Rechnungen": "https://n8n.local/webhook/…"}}`, optional Secret `n8n_webhook_secret` (Header `X-Jarvis-Secret`) |
 | Bildschirm/Tastatur | ✅ implementiert (Screenshot, Texteingabe), standardmäßig **aus** | Modul „Bildschirm/Tastatur“ aktivieren, für Texteingabe `pyautogui` |
-| Browser-Automatisierung mit Playwright | ⏳ geplant | aktuell: Seiten lesen per HTTP; Formulare ausfüllen noch nicht |
+| Browser-Automatisierung (Playwright) | ✅ mit echtem Chromium getestet | Nutzt unter Windows den installierten Edge (sichtbares Fenster). Ausfüllen/Klicken = Stufe 2 mit Vorschau-Screenshot; Absenden/Kaufen/Bezahlen nur über `browser_submit_critical` (Stufe 3). Einstellungen: `browser_headless`, `browser_executable` |
 | Gmail / Google Calendar | ✅ implementiert (gegen simulierte API getestet) – du brauchst eine eigene Client-ID | Anleitung unten |
 | Outlook / Microsoft 365 / Outlook-Kalender | ✅ implementiert (gegen simulierte API getestet) – du brauchst eine eigene Client-ID | Anleitung unten |
 | Kalender über iCal-Adresse (ohne Anmeldung, nur lesen) | ✅ | Setup → Kalender (iCal-Adressen) |

@@ -579,7 +579,7 @@ async function loadSettings() {
     row.querySelector(".del")?.addEventListener("click", async () => { await api(`/api/secrets/${k}`, { method: "DELETE" }); loadSettings(); });
     $("#secret-list").appendChild(row);
   }
-  const labels = { system: "System", apps: "Programme", files: "Dateien", documents: "Dokumente", browser: "Browser/Web", screen: "Bildschirm/Tastatur", tasks: "Aufgaben", memory: "Gedächtnis", lists: "Listen", health: "Gewohnheiten", finance: "Finanzen", automation: "Automationen", calendar: "Kalender", email: "E-Mail", smarthome: "Smart Home", n8n: "n8n", core: "Kern" };
+  const labels = { system: "System", apps: "Programme", files: "Dateien", documents: "Dokumente", browser: "Browser/Web", browser_auto: "Browser-Automatisierung", screen: "Bildschirm/Tastatur", tasks: "Aufgaben", memory: "Gedächtnis", lists: "Listen", health: "Gewohnheiten", finance: "Finanzen", automation: "Automationen", calendar: "Kalender", email: "E-Mail", smarthome: "Smart Home", n8n: "n8n", core: "Kern" };
   $("#module-list").innerHTML = "";
   st.modules.forEach((m) => {
     const lab = el(`<label class="switch"><input type="checkbox" ${st.disabled_modules.includes(m) ? "" : "checked"} ${m === "core" ? "disabled" : ""}><span></span> ${labels[m] || m}</label>`);

@@ -190,6 +190,8 @@ class OpenAIProvider(Provider):
                       "max_completion_tokens": self.max_tokens}
         if tools:
             body["tools"] = [{"type": "function", "function": t} for t in tools]
+        if on_text:
+            return await self._stream(body, on_text)
         try:
             async with httpx.AsyncClient(timeout=120, transport=self.transport) as c:
                 r = await c.post(f"{self.base_url}/chat/completions", json=body,
@@ -215,6 +217,53 @@ class OpenAIProvider(Provider):
         usage = data.get("usage") or {}
         return LLMResponse(msg.get("content") or "", calls, usage.get("prompt_tokens", 0),
                            usage.get("completion_tokens", 0), choice.get("finish_reason", ""))
+
+    def _status_error(self, status: int, text: str) -> ProviderError:
+        if status == 401:
+            return ProviderError("OpenAI-API-Schlüssel ungültig", "auth")
+        if status == 429:
+            return ProviderError("OpenAI-Ratenlimit erreicht", "rate_limit")
+        return ProviderError(f"OpenAI-Fehler {status}: {text[:300]}", "api")
+
+    async def _stream(self, body: dict, on_text: TextCallback) -> LLMResponse:
+        """Server-Sent-Events: Text sofort weitergeben, Werkzeugaufrufe aus Teilstücken zusammensetzen."""
+        body = {**body, "stream": True, "stream_options": {"include_usage": True}}
+        text, finish, usage = [], "", {}
+        calls: dict[int, dict] = {}
+        try:
+            async with httpx.AsyncClient(timeout=120, transport=self.transport) as c, c.stream(
+                    "POST", f"{self.base_url}/chat/completions", json=body,
+                    headers={"Authorization": f"Bearer {self.api_key}"}) as r:
+                if r.status_code >= 400:
+                    raise self._status_error(r.status_code, (await r.aread()).decode(errors="replace"))
+                async for line in r.aiter_lines():
+                    if not line.startswith("data: ") or line.strip() == "data: [DONE]":
+                        continue
+                    chunk = json.loads(line[6:])
+                    usage = chunk.get("usage") or usage
+                    for ch in chunk.get("choices", []):
+                        delta = ch.get("delta", {})
+                        if delta.get("content"):
+                            text.append(delta["content"])
+                            await on_text(delta["content"])
+                        for tc in delta.get("tool_calls") or []:
+                            cur = calls.setdefault(tc.get("index", 0), {"id": "", "name": "", "args": ""})
+                            cur["id"] = tc.get("id") or cur["id"]
+                            fn = tc.get("function") or {}
+                            cur["name"] += fn.get("name") or ""
+                            cur["args"] += fn.get("arguments") or ""
+                        finish = ch.get("finish_reason") or finish
+        except httpx.HTTPError as exc:
+            raise ProviderError(f"Keine Verbindung zu OpenAI: {exc}", "network")
+        tool_calls = []
+        for _, cur in sorted(calls.items()):
+            try:
+                args = json.loads(cur["args"] or "{}")
+            except json.JSONDecodeError:
+                args = {}
+            tool_calls.append(ToolCall(cur["id"] or "call_" + uuid.uuid4().hex[:8], cur["name"], args))
+        return LLMResponse("".join(text), tool_calls, usage.get("prompt_tokens", 0),
+                           usage.get("completion_tokens", 0), finish)
 
 
 # ---------------------------------------------------------------------------
@@ -251,6 +300,8 @@ class OllamaProvider(Provider):
                       "options": {"num_predict": self.max_tokens}}
         if tools:
             body["tools"] = [{"type": "function", "function": t} for t in tools]
+        if on_text:
+            return await self._stream(body, on_text)
         try:
             async with httpx.AsyncClient(timeout=300, transport=self.transport) as c:
                 r = await c.post(f"{self.base_url}/api/chat", json=body)
@@ -272,3 +323,36 @@ class OllamaProvider(Provider):
             calls.append(ToolCall("call_" + uuid.uuid4().hex[:8], fn.get("name", ""), args))
         return LLMResponse(msg.get("content", ""), calls, data.get("prompt_eval_count", 0),
                            data.get("eval_count", 0), data.get("done_reason", ""))
+
+    async def _stream(self, body: dict, on_text: TextCallback) -> LLMResponse:
+        """Ollama liefert JSON-Zeilen; Text wird sofort weitergegeben."""
+        body = {**body, "stream": True}
+        text, calls, pin, pout, reason = [], [], 0, 0, ""
+        try:
+            async with httpx.AsyncClient(timeout=300, transport=self.transport) as c, c.stream(
+                    "POST", f"{self.base_url}/api/chat", json=body) as r:
+                if r.status_code >= 400:
+                    raise ProviderError(f"Ollama-Fehler {r.status_code}: {(await r.aread())[:300]!r}", "api")
+                async for line in r.aiter_lines():
+                    if not line.strip():
+                        continue
+                    chunk = json.loads(line)
+                    msg = chunk.get("message", {})
+                    if msg.get("content"):
+                        text.append(msg["content"])
+                        await on_text(msg["content"])
+                    for tc in msg.get("tool_calls") or []:
+                        fn = tc.get("function", {})
+                        args = fn.get("arguments") or {}
+                        if isinstance(args, str):
+                            try:
+                                args = json.loads(args)
+                            except json.JSONDecodeError:
+                                args = {}
+                        calls.append(ToolCall("call_" + uuid.uuid4().hex[:8], fn.get("name", ""), args))
+                    if chunk.get("done"):
+                        pin, pout = chunk.get("prompt_eval_count", 0), chunk.get("eval_count", 0)
+                        reason = chunk.get("done_reason", "")
+        except httpx.HTTPError:
+            raise ProviderError("Ollama ist nicht erreichbar – läuft 'ollama serve'?", "network")
+        return LLMResponse("".join(text), calls, pin, pout, reason)

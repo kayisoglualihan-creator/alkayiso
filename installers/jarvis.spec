@@ -10,7 +10,7 @@ a = Analysis(
     [os.path.join(ROOT, "installers", "jarvis_launcher.py")],
     pathex=[BACKEND],
     datas=[(os.path.join(BACKEND, "jarvis", "web"), os.path.join("jarvis", "web"))],
-    hiddenimports=collect_submodules("uvicorn") + collect_submodules("jarvis") + ["pystray._win32", "keyring.backends.Windows"],
+    hiddenimports=collect_submodules("uvicorn") + collect_submodules("jarvis") + ["pystray._win32", "keyring.backends.Windows", "playwright.async_api"],
     excludes=["tkinter", "matplotlib", "pytest"],
 )
 pyz = PYZ(a.pure)

@@ -29,7 +29,7 @@ from .tools.files import extractive_summary
 PROVIDERS = ["offline", "anthropic", "openai", "ollama"]
 DEFAULT_MODELS = {"anthropic": "claude-opus-5-5", "openai": "gpt-4o-mini", "ollama": "qwen2.5:7b",
                   "offline": "lokaler-basismodus"}
-MODULES = ["system", "apps", "files", "documents", "browser", "screen", "tasks", "memory", "lists", "health",
+MODULES = ["system", "apps", "files", "documents", "browser", "browser_auto", "screen", "tasks", "memory", "lists", "health",
            "finance", "automation", "calendar", "email", "smarthome", "n8n", "core"]
 DEFAULT_DISABLED_MODULES = ["screen", "smarthome", "n8n"]
 
@@ -193,6 +193,11 @@ class Jarvis:
             self.automations.start(self.settings.scheduler_interval)
 
     async def stop(self) -> None:
+        if hasattr(self, "_browser_session"):
+            try:
+                await self._browser_session.close()
+            except Exception:
+                pass
         await self.automations.stop()
         await self.jobs.shutdown()
         self.db.close()
