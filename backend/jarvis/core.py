@@ -29,7 +29,7 @@ PROVIDERS = ["offline", "anthropic", "openai", "ollama"]
 DEFAULT_MODELS = {"anthropic": "claude-opus-5-5", "openai": "gpt-4o-mini", "ollama": "qwen2.5:7b",
                   "offline": "lokaler-basismodus"}
 MODULES = ["system", "apps", "files", "documents", "browser", "screen", "tasks", "memory", "lists", "health",
-           "finance", "automation", "smarthome", "n8n", "core"]
+           "finance", "automation", "calendar", "smarthome", "n8n", "core"]
 DEFAULT_DISABLED_MODULES = ["screen", "smarthome", "n8n"]
 
 
@@ -127,6 +127,23 @@ class Jarvis:
             return resp.text.strip() or extractive_summary(text)
         except ProviderError:
             return extractive_summary(text) + "\n(Lokale Zusammenfassung – KI-Anbieter nicht erreichbar)"
+
+    async def today_events(self) -> list[dict]:
+        """Heutige Kalendertermine (leer, wenn kein Kalender verbunden oder nicht erreichbar)."""
+        import datetime as dt
+
+        from .integrations.calendar_ics import events_between, fetch_calendars
+        urls = self.db.get_setting("calendar_ics_urls", []) or []
+        if not urls or "calendar" in self.disabled_modules():
+            return []
+        try:
+            start = dt.datetime.combine(dt.date.today(), dt.time())
+            return events_between(await fetch_calendars(urls), start, start + dt.timedelta(days=1))
+        except Exception:
+            return []
+
+    async def briefing(self) -> dict:
+        return self.services.briefing(await self.today_events())
 
     # -- Werkzeuge ------------------------------------------------------------------
     def disabled_modules(self) -> set[str]:

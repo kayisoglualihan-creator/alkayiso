@@ -52,6 +52,9 @@ def plan(text: str) -> list[ToolCall] | str:
                 "Für freie Gespräche richte in den Einstellungen einen KI-Anbieter ein.")
     if re.search(r"guten morgen|tagesübersicht|tagesuebersicht|briefing|was steht (heute )?an|mein tag|good morning", t):
         return [_call("daily_briefing")]
+    if re.search(r"\btermin|kalender|calendar|meetings?\b", t):
+        days = 7 if re.search(r"woche|week|nächsten tage", t) else 2 if "morgen" in t else 1
+        return [_call("calendar_events", days=days)]
     if re.search(r"wie spät|uhrzeit|welcher tag|welches datum|what time|datum heute", t):
         return [_call("get_time")]
     if re.search(r"prozess", t):

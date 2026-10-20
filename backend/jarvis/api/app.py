@@ -135,7 +135,7 @@ SETTINGS_KEYS = {
     "allowed_roots": list, "app_aliases": dict, "public_url": str, "user_name": str, "language": str,
     "tts_engine": str, "whisper_model": str, "piper_model_path": str, "elevenlabs_voice_id": str,
     "voice_rate": (int, float), "voice_volume": (int, float), "voice_name": str, "wake_word_enabled": bool,
-    "home_assistant_url": str, "n8n_webhooks": dict, "close_to_tray": bool,
+    "home_assistant_url": str, "calendar_ics_urls": list, "n8n_webhooks": dict, "close_to_tray": bool,
 }
 
 
@@ -444,8 +444,8 @@ def create_app(settings: Settings | None = None, *, dry_run: bool = False) -> Fa
         return {"deleted": app_of(request).services.delete_reminder(rid)}
 
     @app.get("/api/briefing", tags=["tasks"])
-    def briefing(request: Request, _: Principal = Depends(principal)):
-        return app_of(request).services.briefing()
+    async def briefing(request: Request, _: Principal = Depends(principal)):
+        return await app_of(request).briefing()
 
     # ------------------------------------------------------------------ Gedächtnis
     @app.get("/api/memory", tags=["memory"])

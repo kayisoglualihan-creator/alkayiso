@@ -572,7 +572,7 @@ async function loadSettings() {
     row.querySelector(".del")?.addEventListener("click", async () => { await api(`/api/secrets/${k}`, { method: "DELETE" }); loadSettings(); });
     $("#secret-list").appendChild(row);
   }
-  const labels = { system: "System", apps: "Programme", files: "Dateien", documents: "Dokumente", browser: "Browser/Web", screen: "Bildschirm/Tastatur", tasks: "Aufgaben", memory: "Gedächtnis", lists: "Listen", health: "Gewohnheiten", finance: "Finanzen", automation: "Automationen", smarthome: "Smart Home", n8n: "n8n", core: "Kern" };
+  const labels = { system: "System", apps: "Programme", files: "Dateien", documents: "Dokumente", browser: "Browser/Web", screen: "Bildschirm/Tastatur", tasks: "Aufgaben", memory: "Gedächtnis", lists: "Listen", health: "Gewohnheiten", finance: "Finanzen", automation: "Automationen", calendar: "Kalender", smarthome: "Smart Home", n8n: "n8n", core: "Kern" };
   $("#module-list").innerHTML = "";
   st.modules.forEach((m) => {
     const lab = el(`<label class="switch"><input type="checkbox" ${st.disabled_modules.includes(m) ? "" : "checked"} ${m === "core" ? "disabled" : ""}><span></span> ${labels[m] || m}</label>`);
@@ -583,6 +583,7 @@ async function loadSettings() {
     $("#module-list").appendChild(lab);
   });
   $("#set-roots").value = st.allowed_roots.join("\n");
+  $("#set-ics").value = (st.values.calendar_ics_urls || []).join("\n");
   const v = st.voice;
   $("#voice-status").innerHTML = `Browser-Sprache: ${SR ? "✓ Erkennung" : "✗ Erkennung"} · ${"speechSynthesis" in window ? "✓ Ausgabe" : "✗ Ausgabe"}<br>Server: faster-whisper ${v.stt_faster_whisper ? "✓" : "✗"} · Piper ${v.tts_piper ? "✓" : "✗"} · ElevenLabs ${v.tts_elevenlabs ? "✓" : "✗"} · openWakeWord ${v.wakeword_openwakeword ? "✓" : "✗"}`;
   $("#set-wake-server").checked = !!st.values.wake_word_enabled;
@@ -668,6 +669,7 @@ function bindUI() {
     toast("KI-Einstellungen gespeichert"); loadSettings(); refreshSide();
   };
   $("#btn-test-ai").onclick = async () => { $("#ai-test").textContent = "Teste …"; const r = await api("/api/ai/test", { method: "POST" }); $("#ai-test").textContent = r.ok ? `✓ ${r.provider}/${r.model}: ${r.reply}` : `✗ ${r.error}`; };
+  $("#btn-save-ics").onclick = async () => { await api("/api/settings", { method: "PATCH", body: { calendar_ics_urls: $("#set-ics").value.split("\n").map((s) => s.trim()).filter(Boolean) } }); toast("Kalender gespeichert"); refreshSide(); };
   $("#btn-save-roots").onclick = async () => { await api("/api/settings", { method: "PATCH", body: { allowed_roots: $("#set-roots").value.split("\n").map((s) => s.trim()).filter(Boolean) } }); toast("Ordner gespeichert"); };
   $("#modal").onclick = (e) => { if (e.target.id === "modal") closeModal(); };
 }

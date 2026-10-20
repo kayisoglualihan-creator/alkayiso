@@ -189,3 +189,56 @@ def test_ssrf_protection():
     for url in ("http://127.0.0.1:8765/api/status", "http://localhost/", "http://192.168.1.1/", "file:///etc/passwd"):
         with pytest.raises(ValueError):
             _check_public_url(url)
+
+
+# ------------------------------------------------------------------ Kalender (iCal)
+ICS = """BEGIN:VCALENDAR
+BEGIN:VEVENT
+DTSTART:20261020T090000
+DTEND:20261020T100000
+SUMMARY:Teammeeting
+LOCATION:Büro\\, Raum 2
+END:VEVENT
+BEGIN:VEVENT
+DTSTART;VALUE=DATE:20261020
+DTEND;VALUE=DATE:20261021
+SUMMARY:Geburtstag Anna
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261001T080000
+DTEND:20261001T083000
+RRULE:FREQ=WEEKLY;BYDAY=MO,TU
+SUMMARY:Standup
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20261020T150000
+SUMMARY:Abgesagt
+STATUS:CANCELLED
+END:VEVENT
+END:VCALENDAR
+"""
+
+
+def test_ics_parsing_and_recurrence():
+    from jarvis.integrations.calendar_ics import events_between, format_events
+    day = dt.datetime(2026, 10, 20)  # Dienstag
+    events = events_between([ICS], day, day + dt.timedelta(days=1))
+    titles = [e["title"] for e in events]
+    assert titles == ["Geburtstag Anna", "Standup", "Teammeeting"]
+    assert events[2]["location"] == "Büro, Raum 2"
+    week = events_between([ICS], day, day + dt.timedelta(days=7))
+    assert sum(e["title"] == "Standup" for e in week) == 2  # Di 20. und Mo 26.
+    assert "Teammeeting" in format_events(events)
+
+
+def test_briefing_mentions_events(client):
+    ev = {"title": "Zahnarzt", "start": dt.datetime.now() + dt.timedelta(hours=1),
+          "end": dt.datetime.now() + dt.timedelta(hours=2), "all_day": False, "location": ""}
+    b = client.jarvis.services.briefing([ev])
+    assert "1 Termin" in b["text"] and "Zahnarzt" in b["text"]
+
+
+def test_calendar_tool_without_config(client):
+    out = client.post("/api/chat", json={"message": "Welche Termine habe ich heute?"}, headers=client.admin).json()
+    assert out["actions"][0]["tool"] == "calendar_events"
+    assert "Kein Kalender verbunden" in out["text"]

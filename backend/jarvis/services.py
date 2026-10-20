@@ -245,7 +245,7 @@ class Services:
                 "balance": round(income + expenses, 2)}
 
     # -- Tagesübersicht -------------------------------------------------------------------
-    def briefing(self) -> dict:
+    def briefing(self, events: list[dict] | None = None) -> dict:
         now = dt.datetime.now()
         start = dt.datetime.combine(now.date(), dt.time()).timestamp()
         end = start + 86400
@@ -257,6 +257,10 @@ class Services:
         hour = now.hour
         greet = "Guten Morgen" if hour < 11 else "Guten Tag" if hour < 18 else "Guten Abend"
         parts = [f"{greet}. Es ist {now.strftime('%H:%M')} Uhr am {now.strftime('%d.%m.%Y')}."]
+        events = [e for e in (events or []) if e["all_day"] or e["end"] > now]
+        if events:
+            parts.append(f"Du hast heute {len(events)} Termin(e): " + ", ".join(
+                (e["title"] if e["all_day"] else f"{e['title']} um {e['start']:%H:%M}") for e in events[:5]) + ".")
         if due_today:
             parts.append(f"Heute fällig: {len(due_today)} Aufgabe(n) – " + ", ".join(t["title"] for t in due_today[:5]) + ".")
         if overdue:
@@ -266,7 +270,8 @@ class Services:
         if reminders:
             parts.append(f"{len(reminders)} Erinnerung(en) für heute: " +
                          ", ".join(f"{r['text']} ({fmt_ts(r['due_at'])[-5:]})" for r in reminders[:5]) + ".")
-        if len(parts) == 1:
+        if len(parts) == 1 and not events:
             parts.append(f"Du hast {len(open_tasks)} offene Aufgabe(n) und heute nichts Dringendes.")
-        return {"text": " ".join(parts), "due_today": due_today, "overdue": overdue, "important": high,
+        return {"text": " ".join(parts), "events": [{**e, "start": e["start"].isoformat(), "end": e["end"].isoformat()}
+                                                     for e in events], "due_today": due_today, "overdue": overdue, "important": high,
                 "reminders": reminders, "open_count": len(open_tasks)}

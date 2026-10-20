@@ -125,7 +125,7 @@ class AutomationManager:
     async def run(self, a: dict, source: str = "automation") -> str:
         kind, payload = a["action_type"], a["payload"]
         if kind == "briefing":
-            b = self.app.services.briefing()
+            b = await self.app.briefing()
             self.app.services.notify("briefing", "Tagesübersicht", b["text"])
             result = b["text"]
         elif kind == "reminder":

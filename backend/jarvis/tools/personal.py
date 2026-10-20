@@ -68,8 +68,8 @@ def register(reg: ToolRegistry) -> None:
 
     @reg.tool("daily_briefing", "Tagesübersicht: fällige und überfällige Aufgaben, wichtige Aufgaben, Erinnerungen.",
               params(), LEVEL_READ, module="tasks")
-    def daily_briefing(ctx: ToolContext) -> ToolResult:
-        b = ctx.app.services.briefing()
+    async def daily_briefing(ctx: ToolContext) -> ToolResult:
+        b = await ctx.app.briefing()
         return ToolResult(b["text"], b)
 
     # -- Gedächtnis ---------------------------------------------------------------
