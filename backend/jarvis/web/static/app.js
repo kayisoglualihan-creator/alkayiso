@@ -627,6 +627,86 @@ function fillVoices() {
   $("#set-rate").value = p.rate; $("#set-volume").value = p.volume;
 }
 
+
+// ---------------------------------------------------------------- Einrichtungsassistent (erster Start)
+const Wizard = {
+  step: 0,
+  steps: ["Willkommen", "KI-Modell", "Ordner", "Autostart", "iPhone", "Fertig"],
+  async open() { this.step = 0; this.st = await api("/api/settings"); this.render(); },
+  nav(extra = "") {
+    return `<div class="row-form mt">${this.step > 0 ? '<button class="ghost" id="wz-back">Zurück</button>' : ""}
+      <span style="flex:1"></span>${extra}<button class="primary" id="wz-next">${this.step === this.steps.length - 1 ? "Los geht's" : "Weiter"}</button></div>
+      <p class="small muted">Schritt ${this.step + 1} von ${this.steps.length} · <a href="#" id="wz-skip" style="color:var(--muted)">Assistent überspringen</a></p>`;
+  },
+  async render() {
+    const st = this.st; const s = this.steps[this.step]; let body = "";
+    if (s === "Willkommen") body = `<p>Guten Tag. Ich bin <b>J.A.R.V.I.S.</b>, dein persönlicher Assistent. Ich richte mich in wenigen Schritten ein.</p>
+      <label>Wie darf ich dich nennen? <input id="wz-name" value="${esc(st.values.user_name || "")}" placeholder="Vorname"></label>`;
+    if (s === "KI-Modell") body = `<p>Für freie Gespräche brauche ich ein KI-Modell. Ohne Schlüssel arbeite ich im <b>lokalen Basismodus</b> (feste Befehle wie „Öffne VS Code“).</p>
+      <label>Anbieter <select id="wz-prov"><option value="offline">Lokaler Basismodus (ohne KI)</option><option value="anthropic">Anthropic Claude (empfohlen)</option><option value="openai">OpenAI</option><option value="ollama">Ollama (lokal, privat)</option></select></label>
+      <label class="mt" id="wz-key-l">API-Schlüssel <input id="wz-key" type="password" autocomplete="off" placeholder="wird im Windows-Schlüsselspeicher abgelegt"></label>
+      <p class="small muted" id="wz-hint"></p><div id="wz-test" class="small"></div>`;
+    if (s === "Ordner") body = `<p>Auf welche Ordner darf ich zugreifen? Andere Ordner sind für mich tabu. Eine Zeile pro Ordner.</p>
+      <textarea id="wz-roots" rows="5">${esc(st.allowed_roots.join("\n"))}</textarea>`;
+    if (s === "Autostart") {
+      let a = { supported: false, enabled: false }; try { a = await api("/api/system/autostart"); } catch { /* */ }
+      body = a.supported ? `<p>Soll ich beim Windows-Login automatisch starten? Ich laufe dann unauffällig im Infobereich.</p>
+        <label class="switch"><input type="checkbox" id="wz-auto" ${a.enabled ? "checked" : ""}><span></span> Beim Login starten</label>
+        <p class="mt">Sprachausgabe: <label class="switch"><input type="checkbox" id="wz-tts" ${voicePrefs().tts ? "checked" : ""}><span></span> Antworten vorlesen</label></p>`
+        : `<p>Autostart ist nur unter Windows verfügbar.</p><p>Sprachausgabe: <label class="switch"><input type="checkbox" id="wz-tts" ${voicePrefs().tts ? "checked" : ""}><span></span> Antworten vorlesen</label></p>`;
+    }
+    if (s === "iPhone") {
+      let ts = {}; try { ts = await api("/api/network/tailscale"); } catch { /* */ }
+      const ok = (b) => (b ? "✓" : "✗");
+      body = `<p>Damit du mich unterwegs vom iPhone erreichst, nutze ich dein privates <b>Tailscale</b>-Netz.</p>
+        <ul class="list small"><li>${ok(ts.installed)} Tailscale installiert ${ts.installed ? "" : '– <a href="https://tailscale.com/download/windows" target="_blank" rel="noopener">herunterladen</a>'}</li>
+        <li>${ok(ts.running)} angemeldet ${ts.tailnet ? "(" + esc(ts.tailnet) + ")" : ""}</li>
+        <li>${ok(ts.serve_configured)} Tailscale Serve eingerichtet ${ts.serve_configured ? esc(ts.https_url || "") : "– Startmenü → „Tailscale Serve einrichten“"}</li>
+        ${ts.funnel_enabled ? '<li style="color:var(--err)">✗ Funnel ist aktiv – bitte deaktivieren!</li>' : ""}</ul>
+        <p class="small muted">Du kannst das auch später unter <b>PC → iPhone verbinden</b> erledigen.</p>
+        ${ts.serve_configured ? '<button class="ghost" id="wz-pair">QR-Code jetzt anzeigen</button><div id="wz-qr"></div>' : ""}`;
+    }
+    if (s === "Fertig") body = `<p>Alles bereit${st.values.user_name ? ", " + esc(st.values.user_name) : ""}. Probiere zum Beispiel:</p>
+      <ul class="list small"><li>„Guten Morgen“ – Tagesübersicht</li><li>„Öffne Visual Studio Code“</li><li>„Fasse die neueste PDF zusammen“</li><li>„Erinnere mich in 20 Minuten an den Anruf“</li><li>„Merke dir, dass ich Python bevorzuge“</li></ul>
+      <p class="small muted">Sensible Aktionen frage ich immer erst nach. Einstellungen findest du jederzeit unter <b>Setup</b>.</p>`;
+    openModal(`<h3>Einrichtung · ${s}</h3>${body}${this.nav(s === "KI-Modell" ? '<button class="ghost" id="wz-testbtn">Testen</button>' : "")}`);
+    if (s === "KI-Modell") {
+      const prov = $("#wz-prov"); prov.value = st.ai.provider;
+      const upd = () => {
+        const p = prov.value; const needs = p === "anthropic" || p === "openai";
+        $("#wz-key-l").classList.toggle("hidden", !needs);
+        const has = st.secrets[p + "_api_key"];
+        $("#wz-key").placeholder = has ? "(bereits gespeichert – leer lassen zum Behalten)" : "wird im Windows-Schlüsselspeicher abgelegt";
+        $("#wz-hint").innerHTML = { anthropic: 'Schlüssel erstellen: <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>',
+          openai: 'Schlüssel erstellen: <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">platform.openai.com</a>',
+          ollama: 'Ollama installieren (<a href="https://ollama.com" target="_blank" rel="noopener">ollama.com</a>) und z. B. <code>ollama pull qwen2.5:7b</code> ausführen.', offline: "" }[p];
+      };
+      prov.onchange = upd; upd();
+      $("#wz-testbtn").onclick = async () => { await this.save(); $("#wz-test").textContent = "Teste …"; const r = await api("/api/ai/test", { method: "POST" }); $("#wz-test").textContent = r.ok ? `✓ ${r.model} antwortet: ${r.reply}` : `✗ ${r.error}`; };
+    }
+    $("#wz-pair")?.addEventListener("click", async () => { const p = await api("/api/pairing/start", { method: "POST" }); $("#wz-qr").innerHTML = `<div class="qr">${p.qr_svg}</div><p class="small muted">Mit der iPhone-Kamera scannen.</p>`; });
+    $("#wz-back")?.addEventListener("click", () => { this.step--; this.render(); });
+    $("#wz-next").onclick = async () => { try { await this.save(); } catch (e) { return toast(e.message); } if (this.step === this.steps.length - 1) { closeModal(); refreshSide(); return; } this.step++; this.render(); };
+    $("#wz-skip").onclick = async (e) => { e.preventDefault(); await api("/api/settings", { method: "PATCH", body: { setup_completed: true } }); closeModal(); };
+  },
+  async save() {
+    const s = this.steps[this.step];
+    if (s === "Willkommen") await api("/api/settings", { method: "PATCH", body: { user_name: $("#wz-name").value.trim() } });
+    if (s === "KI-Modell") {
+      const p = $("#wz-prov").value; const key = $("#wz-key")?.value.trim();
+      if (key && (p === "anthropic" || p === "openai")) await api(`/api/secrets/${p}_api_key`, { method: "PUT", body: { value: key } });
+      await api("/api/settings", { method: "PATCH", body: { ai_provider: p } });
+      this.st = await api("/api/settings");
+    }
+    if (s === "Ordner") await api("/api/settings", { method: "PATCH", body: { allowed_roots: $("#wz-roots").value.split("\n").map((x) => x.trim()).filter(Boolean) } });
+    if (s === "Autostart") {
+      if ($("#wz-auto")) await api("/api/system/autostart", { method: "POST", body: { enabled: $("#wz-auto").checked } });
+      store.set("voice", { ...voicePrefs(), tts: $("#wz-tts").checked }); $("#tts-toggle").checked = $("#wz-tts").checked;
+    }
+    if (s === "Fertig") await api("/api/settings", { method: "PATCH", body: { setup_completed: true } });
+  },
+};
+
 // ---------------------------------------------------------------- Navigation & Laden
 function showView(name) {
   $$(".view").forEach((v) => v.classList.toggle("active", v.id === "view-" + name));
@@ -677,6 +757,7 @@ function bindUI() {
   $("#btn-test-ai").onclick = async () => { $("#ai-test").textContent = "Teste …"; const r = await api("/api/ai/test", { method: "POST" }); $("#ai-test").textContent = r.ok ? `✓ ${r.provider}/${r.model}: ${r.reply}` : `✗ ${r.error}`; };
   $("#btn-save-ics").onclick = async () => { await api("/api/settings", { method: "PATCH", body: { calendar_ics_urls: $("#set-ics").value.split("\n").map((s) => s.trim()).filter(Boolean) } }); toast("Kalender gespeichert"); refreshSide(); };
   $("#btn-save-roots").onclick = async () => { await api("/api/settings", { method: "PATCH", body: { allowed_roots: $("#set-roots").value.split("\n").map((s) => s.trim()).filter(Boolean) } }); toast("Ordner gespeichert"); };
+  $("#btn-wizard").onclick = () => Wizard.open();
   $("#modal").onclick = (e) => { if (e.target.id === "modal") closeModal(); };
 }
 
@@ -740,6 +821,7 @@ async function boot() {
   $("#conn-dot").className = "dot " + (S.online ? "ok" : "err");
   if (S.conv) loadConversation(S.conv).catch(() => {}); else addMsg("assistant", S.mode === "device" ? "Hallo. Was soll ich auf deinem PC erledigen?" : "Guten Tag. Wie kann ich helfen?");
   showView("home"); loadAll(); connectWS();
+  if (S.mode === "admin") api("/api/settings").then((st) => { S.settings = st; if (!st.values.setup_completed) Wizard.open(); }).catch(() => {});
   setInterval(ping, 10000); setInterval(() => { if (S.online && $("#view-home").classList.contains("active")) refreshSide(); }, 30000);
 }
 

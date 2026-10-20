@@ -135,7 +135,7 @@ SETTINGS_KEYS = {
     "allowed_roots": list, "app_aliases": dict, "public_url": str, "user_name": str, "language": str,
     "tts_engine": str, "whisper_model": str, "piper_model_path": str, "elevenlabs_voice_id": str,
     "voice_rate": (int, float), "voice_volume": (int, float), "voice_name": str, "wake_word_enabled": bool,
-    "home_assistant_url": str, "calendar_ics_urls": list, "n8n_webhooks": dict, "close_to_tray": bool,
+    "home_assistant_url": str, "calendar_ics_urls": list, "n8n_webhooks": dict, "close_to_tray": bool, "setup_completed": bool,
 }
 
 
@@ -309,6 +309,20 @@ def create_app(settings: Settings | None = None, *, dry_run: bool = False) -> Fa
         j.db.set_setting("remote_access_enabled", enabled)
         j.db.audit("desktop", "remote_access_" + ("enabled" if enabled else "disabled"), risk=3)
         return {"enabled": enabled}
+
+    @app.get("/api/system/autostart", tags=["settings"])
+    def autostart_get(_: Principal = Depends(admin)):
+        from ..windows_agent import IS_WINDOWS, autostart_enabled
+        return {"supported": IS_WINDOWS, "enabled": autostart_enabled()}
+
+    @app.post("/api/system/autostart", tags=["settings"])
+    def autostart_set(body: dict, request: Request, _: Principal = Depends(admin)):
+        from ..windows_agent import IS_WINDOWS, set_autostart
+        if not IS_WINDOWS:
+            raise ApiError(501, "autostart_unsupported", "Autostart ist nur unter Windows verfügbar")
+        enabled = set_autostart(bool(body.get("enabled")))
+        app_of(request).db.audit("desktop", "autostart_" + ("on" if enabled else "off"), risk=2)
+        return {"supported": True, "enabled": enabled}
 
     @app.get("/api/network/tailscale", tags=["devices"])
     def tailscale(_: Principal = Depends(admin)):
