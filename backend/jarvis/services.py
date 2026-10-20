@@ -9,7 +9,6 @@ import time
 from .database import Database
 from .events import EventBus
 
-
 # ---------------------------------------------------------------------------
 # Zeitangaben (deutsch/englisch) – bewusst einfach und vorhersehbar
 # ---------------------------------------------------------------------------

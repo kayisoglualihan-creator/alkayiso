@@ -5,7 +5,8 @@ import datetime as dt
 import json
 import time
 import uuid
-from typing import TYPE_CHECKING, Awaitable, Callable
+from collections.abc import Awaitable, Callable
+from typing import TYPE_CHECKING
 
 from ..security.permissions import LEVEL_CRITICAL
 from ..tools.files import PathDenied
@@ -47,7 +48,7 @@ def wrap_untrusted(name: str, content: str) -> str:
 
 
 class Agent:
-    def __init__(self, app: "Jarvis"):
+    def __init__(self, app: Jarvis):
         self.app = app
 
     # -- Kontext ----------------------------------------------------------------

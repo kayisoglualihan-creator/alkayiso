@@ -15,7 +15,7 @@ STATUSES = {"pending", "running", "approval_required", "succeeded", "failed", "c
 
 
 class JobManager:
-    def __init__(self, app: "Jarvis"):
+    def __init__(self, app: Jarvis):
         self.app = app
         self._tasks: dict[str, asyncio.Task] = {}
 
@@ -103,7 +103,7 @@ class JobManager:
         if task:
             try:
                 await asyncio.wait_for(asyncio.shield(task), timeout)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 pass
         return self.get(job_id)
 

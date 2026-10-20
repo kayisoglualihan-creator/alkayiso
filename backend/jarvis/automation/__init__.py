@@ -62,7 +62,7 @@ def next_run(schedule: str, after: float) -> float | None:
 
 
 class AutomationManager:
-    def __init__(self, app: "Jarvis"):
+    def __init__(self, app: Jarvis):
         self.app = app
         self._task: asyncio.Task | None = None
 

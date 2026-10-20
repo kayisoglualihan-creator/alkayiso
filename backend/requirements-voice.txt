@@ -1,0 +1,6 @@
+# Optionale lokale Sprachdienste (benötigen mehr Rechenleistung / Downloads)
+faster-whisper>=1.0    # Speech-to-Text lokal
+piper-tts>=1.2         # Text-to-Speech lokal (zusätzlich Stimmmodell .onnx in %LOCALAPPDATA%\Jarvis\voices)
+openwakeword>=0.6      # Wake Word "Hey Jarvis"
+sounddevice>=0.4       # Mikrofonzugriff für den Wake-Word-Dienst
+numpy

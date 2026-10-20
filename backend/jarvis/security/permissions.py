@@ -107,7 +107,7 @@ class ApprovalManager:
         self._waiters[approval_id] = fut
         try:
             return await asyncio.wait_for(fut, timeout=self.ttl)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             self.db.update("approvals", "id", approval_id, {"status": "expired", "decided_at": time.time()})
             self.bus.publish("approval.updated", {"id": approval_id, "status": "expired"})
             return "expired"
@@ -138,7 +138,10 @@ class ApprovalManager:
         self.db.audit(decided_by, f"approval_{status}", {"approval": approval_id, "tool": row["tool"]}, row["risk"])
         fut = self._waiters.get(approval_id)
         if fut and not fut.done():
-            fut.set_result(status)
+            def _resolve(f=fut, st=status):
+                if not f.done():
+                    f.set_result(st)
+            fut.get_loop().call_soon_threadsafe(_resolve)
         self.bus.publish("approval.updated", {"id": approval_id, "status": status})
         return {"id": approval_id, "status": status}
 

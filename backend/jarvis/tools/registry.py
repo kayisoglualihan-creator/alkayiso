@@ -2,8 +2,9 @@
 from __future__ import annotations
 
 import inspect
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Awaitable, Callable
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from ..core import Jarvis
@@ -19,7 +20,7 @@ class ToolResult:
 
 @dataclass
 class ToolContext:
-    app: "Jarvis"
+    app: Jarvis
     source: str              # "desktop", "device:<id>", "automation"
     job_id: str | None = None
     tainted: bool = False

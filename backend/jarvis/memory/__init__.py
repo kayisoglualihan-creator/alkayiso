@@ -23,10 +23,7 @@ from ..database import Database
 DIM = 1024
 _SUFFIXES = sorted(["ungen", "ung", "heit", "keit", "lich", "isch", "en", "er", "es", "em", "e", "n", "s",
                     "ing", "ed", "ly", "ies"], key=len, reverse=True)
-_STOP = set("""der die das ein eine einer eines einem einen und oder aber ich du er sie es wir ihr mein meine
-meinen meiner dein deine ist sind war bin hat habe haben zu im in am an auf aus bei mit von vom zum zur für
-nicht noch auch nur so wie was wer wo the a an and or of to in on for is are was be my your i me it this that
-""".split())
+_STOP = set(["der", "die", "das", "ein", "eine", "einer", "eines", "einem", "einen", "und", "oder", "aber", "ich", "du", "er", "sie", "es", "wir", "ihr", "mein", "meine", "meinen", "meiner", "dein", "deine", "ist", "sind", "war", "bin", "hat", "habe", "haben", "zu", "im", "in", "am", "an", "auf", "aus", "bei", "mit", "von", "vom", "zum", "zur", "für", "nicht", "noch", "auch", "nur", "so", "wie", "was", "wer", "wo", "the", "a", "an", "and", "or", "of", "to", "in", "on", "for", "is", "are", "was", "be", "my", "your", "i", "me", "it", "this", "that"])
 
 
 def _normalize(text: str) -> str:
@@ -63,7 +60,7 @@ class HashEmbedder:
             for i in range(len(padded) - 2):
                 k = _h("c:" + padded[i:i + 3])
                 vec[k] = vec.get(k, 0.0) + 0.35
-        for a, b in zip(toks, toks[1:]):
+        for a, b in zip(toks, toks[1:], strict=False):
             k = _h(f"b:{a}_{b}")
             vec[k] = vec.get(k, 0.0) + 0.5
         norm = math.sqrt(sum(v * v for v in vec.values())) or 1.0

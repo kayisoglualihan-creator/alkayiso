@@ -349,7 +349,7 @@ def create_app(settings: Settings | None = None, *, dry_run: bool = False) -> Fa
 
     # ------------------------------------------------------------------ Fernaufträge
     @app.post("/api/jobs", tags=["remote"], status_code=202)
-    def job_submit(body: JobIn, request: Request, p: Principal = Depends(principal)):
+    async def job_submit(body: JobIn, request: Request, p: Principal = Depends(principal)):
         return app_of(request).jobs.submit(body.text, p.actor, p.device_id, body.conversation_id)
 
     @app.get("/api/jobs", tags=["remote"])
@@ -371,7 +371,7 @@ def create_app(settings: Settings | None = None, *, dry_run: bool = False) -> Fa
         return app_of(request).jobs.get(job_id)
 
     @app.post("/api/jobs/{job_id}/cancel", tags=["remote"])
-    def job_cancel(job_id: str, request: Request, p: Principal = Depends(principal)):
+    async def job_cancel(job_id: str, request: Request, p: Principal = Depends(principal)):
         _own_job(request, p, job_id)
         return {"cancelled": app_of(request).jobs.cancel(job_id)}
 

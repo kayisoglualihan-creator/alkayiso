@@ -14,8 +14,8 @@ from .providers import LLMResponse, Provider, ToolCall
 _URL = re.compile(r"(https?://\S+|\b[\w-]+\.(?:de|com|org|net|io|ai|dev|app)\b\S*)", re.I)
 
 
-def _call(name: str, **args) -> ToolCall:
-    return ToolCall("call_" + uuid.uuid4().hex[:8], name, args)
+def _call(tool: str, **args) -> ToolCall:
+    return ToolCall("call_" + uuid.uuid4().hex[:8], tool, args)
 
 
 def _strip_lead(text: str) -> str:
@@ -152,6 +152,11 @@ def plan(text: str) -> list[ToolCall] | str:
     if m:
         return [_call("web_search", query=m.group(1))]
 
+    # Workflows (vor "starte <Programm>")
+    m = re.match(r"(?:starte|run|führe)\s+(?:den |meinen )?(?:täglichen |taeglichen )?(?:workflow|ablauf|arbeitsworkflow)\s*(.*?)(?:\s+aus)?$", raw, re.I)
+    if m:
+        return [_call("run_workflow", name=m.group(1).strip() or "Arbeitsbeginn")]
+
     # Programme & Webseiten
     m = re.match(r"(?:schließe|schliesse|beende|close|quit)\s+(.+)", raw, re.I)
     if m:
@@ -168,9 +173,6 @@ def plan(text: str) -> list[ToolCall] | str:
         return [_call("open_app", name=target.lower())]
     if re.search(r"sperr(e)? (den )?pc|lock (the )?(pc|screen)", t):
         return [_call("lock_screen")]
-    m = re.match(r"(?:starte|run|führe)\s+(?:den |meinen )?(?:workflow|ablauf)\s+(.+?)(?:\s+aus)?$", raw, re.I)
-    if m:
-        return [_call("run_workflow", name=m.group(1))]
 
     return ("Im lokalen Basismodus habe ich das nicht verstanden. Ich kann z. B. Programme öffnen, den Systemstatus "
             "melden, Dateien suchen/zusammenfassen, Aufgaben und Erinnerungen verwalten. Für freie Gespräche "

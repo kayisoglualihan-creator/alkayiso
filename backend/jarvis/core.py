@@ -159,6 +159,8 @@ class Jarvis:
 
     # -- Lebenszyklus -------------------------------------------------------------------
     async def start(self) -> None:
+        import asyncio
+        self.bus.bind_loop(asyncio.get_running_loop())
         if self.settings.enable_scheduler:
             self.automations.start(self.settings.scheduler_interval)
 

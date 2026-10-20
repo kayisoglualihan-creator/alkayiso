@@ -145,8 +145,8 @@ def register(reg: ToolRegistry) -> None:
               params({"month": {"type": "string"}}), LEVEL_READ, module="finance")
     def budget_summary(ctx: ToolContext, month: str = "") -> ToolResult:
         s = ctx.app.services.budget_summary(month or None)
-        lines = [f"Budget {s['month']}: Einnahmen {s['income']:.2f} €, Ausgaben {s['expenses']:.2f} €, "
-                 f"Saldo {s['balance']:.2f} €"]
+        lines = [(f"Budget {s['month']}: Einnahmen {s['income']:.2f} €, Ausgaben {s['expenses']:.2f} €, "
+                 f"Saldo {s['balance']:.2f} €")]
         lines += [f"- {c['category']}: {c['total']:.2f} € ({c['n']} Buchungen)" for c in s["categories"]]
         return ToolResult("\n".join(lines), s)
 

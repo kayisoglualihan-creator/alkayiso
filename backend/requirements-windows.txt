@@ -1,0 +1,4 @@
+# Optionale Windows-Desktop-Funktionen
+-r requirements.txt
+pystray>=0.19          # Symbol im Infobereich
+pyautogui>=0.9.54      # Tastatur-Automatisierung (Modul "screen")

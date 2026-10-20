@@ -5,8 +5,9 @@ import json
 import sqlite3
 import threading
 import time
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 MIGRATIONS: list[str] = [
     # 1 – Grundschema
