@@ -49,11 +49,14 @@ def system_snapshot() -> dict:
     vm = psutil.virtual_memory()
     disks = []
     for part in psutil.disk_partitions(all=False):
-        if "cdrom" in part.opts or not part.fstype:
+        if "cdrom" in part.opts or not part.fstype or part.fstype.startswith("fuse") \
+                or part.fstype in {"squashfs", "tmpfs", "overlay", "devtmpfs"}:
             continue
         try:
             u = psutil.disk_usage(part.mountpoint)
         except (PermissionError, OSError):
+            continue
+        if u.total < 1e9:
             continue
         disks.append({"mount": part.mountpoint, "total_gb": round(u.total / 1e9, 1),
                       "free_gb": round(u.free / 1e9, 1), "percent": u.percent})

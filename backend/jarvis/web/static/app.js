@@ -121,6 +121,7 @@ function onEvent(ev) {
 }
 function onNotification(n) {
   loadNotifications();
+  if (n.kind === "job") return; // Ergebnis steht bereits im Chat
   toast(`${n.title}${n.body ? ": " + n.body.slice(0, 120) : ""}`, 6000);
   if (n.kind === "reminder" || n.kind === "briefing") speak(n.body || n.title);
   try { if (document.hidden && "Notification" in window && Notification.permission === "granted") new Notification(n.title, { body: n.body, icon: "/static/icons/icon-192.png" }); } catch { /* */ }
