@@ -20,7 +20,17 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--tray", action="store_true", help="Mit Symbol im Infobereich starten (Windows)")
     parser.add_argument("--autostart", choices=["on", "off"], help="Autostart beim Windows-Login setzen und beenden")
     parser.add_argument("--print-admin-token", action="store_true", help="Lokales Admin-Token ausgeben (nach Start)")
+    parser.add_argument("--diagnose", action="store_true", help="Umgebung prüfen und Hinweise ausgeben")
     args = parser.parse_args(argv)
+
+    if sys.stdout is None:  # Fensteranwendung (PyInstaller, console=False): Ausgaben in Logdatei
+        from .config import load_settings as _ls
+        log_file = open(_ls().data_dir / "jarvis.log", "a", encoding="utf-8", buffering=1)  # noqa: SIM115
+        sys.stdout = sys.stderr = log_file
+
+    if args.diagnose:
+        from .diagnose import main as diagnose
+        return diagnose()
 
     from .config import load_settings
     from .windows_agent import open_desktop_ui, run_tray, set_autostart
@@ -39,6 +49,16 @@ def main(argv: list[str] | None = None) -> int:
         settings.port = args.port
     if settings.host not in ("127.0.0.1", "localhost", "::1"):
         print("WARNUNG: Jarvis lauscht nicht nur lokal. Empfohlen ist 127.0.0.1 + Tailscale Serve.", file=sys.stderr)
+
+    # Läuft Jarvis bereits? Dann nur die Oberfläche öffnen (eine Instanz pro Benutzer).
+    try:
+        import httpx
+        if httpx.get(f"http://127.0.0.1:{settings.port}/api/health", timeout=1.5).status_code == 200:
+            print("Jarvis läuft bereits – öffne die Oberfläche.")
+            open_desktop_ui(settings.port, settings.admin_token_file.read_text().strip())
+            return 0
+    except Exception:
+        pass
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     from .api.app import create_app

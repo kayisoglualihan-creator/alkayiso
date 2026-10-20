@@ -1,0 +1,54 @@
+name: iOS-Build
+
+# Kompiliert die iPhone-App auf einem macOS-Runner (Xcode).
+# Ohne Signing-Secrets entsteht ein UNSIGNIERTER Build (Kompilierprüfung, nicht installierbar).
+# Mit Secrets (siehe documentation/INSTALLATION_IPHONE.md) wird eine signierte IPA für TestFlight erstellt.
+on:
+  push:
+    branches: ["main", "claude/**"]
+    paths: ["apps/**", ".github/workflows/ios-build.yml"]
+  workflow_dispatch:
+
+jobs:
+  ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Abhängigkeiten
+        working-directory: apps/jarvis_app
+        run: flutter pub get
+      - name: Unsignierter Build (Kompilierprüfung inkl. Swift App Intents)
+        if: ${{ env.APPLE_CERT_P12 == '' }}
+        env:
+          APPLE_CERT_P12: ${{ secrets.APPLE_CERT_P12 }}
+        working-directory: apps/jarvis_app
+        run: flutter build ios --release --no-codesign
+      - name: Signierte IPA (TestFlight)
+        if: ${{ env.APPLE_CERT_P12 != '' }}
+        env:
+          APPLE_CERT_P12: ${{ secrets.APPLE_CERT_P12 }}
+          APPLE_CERT_PASSWORD: ${{ secrets.APPLE_CERT_PASSWORD }}
+          APPLE_PROVISIONING_PROFILE: ${{ secrets.APPLE_PROVISIONING_PROFILE }}
+        working-directory: apps/jarvis_app
+        run: |
+          KEYCHAIN=$RUNNER_TEMP/build.keychain
+          security create-keychain -p ci "$KEYCHAIN"
+          security set-keychain-settings "$KEYCHAIN"
+          security unlock-keychain -p ci "$KEYCHAIN"
+          echo "$APPLE_CERT_P12" | base64 --decode > $RUNNER_TEMP/cert.p12
+          security import $RUNNER_TEMP/cert.p12 -k "$KEYCHAIN" -P "$APPLE_CERT_PASSWORD" -T /usr/bin/codesign
+          security list-keychains -d user -s "$KEYCHAIN"
+          security set-key-partition-list -S apple-tool:,apple: -s -k ci "$KEYCHAIN"
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          echo "$APPLE_PROVISIONING_PROFILE" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/jarvis.mobileprovision
+          flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: JARVIS-iOS
+          path: |
+            apps/jarvis_app/build/ios/iphoneos/*.app
+            apps/jarvis_app/build/ios/ipa/*.ipa
+          if-no-files-found: ignore

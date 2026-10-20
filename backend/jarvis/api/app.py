@@ -139,6 +139,17 @@ SETTINGS_KEYS = {
 }
 
 
+def _start_wake(app: FastAPI) -> bool:
+    from ..voice.wakeword import WakeWordLoop
+
+    if not WakeWordLoop.available():
+        return False
+    if app.state.wake is None:
+        app.state.wake = WakeWordLoop(app.state.jarvis, app.state.voice, asyncio.get_running_loop())
+    app.state.wake.start()
+    return True
+
+
 # ---------------------------------------------------------------------------
 def create_app(settings: Settings | None = None, *, dry_run: bool = False) -> FastAPI:
     settings = settings or load_settings()
@@ -148,8 +159,13 @@ def create_app(settings: Settings | None = None, *, dry_run: bool = False) -> Fa
         jarvis = Jarvis(settings, dry_run=dry_run)
         app.state.jarvis = jarvis
         app.state.voice = VoiceService(settings.data_dir, jarvis.secrets, jarvis.db)
+        app.state.wake = None
         await jarvis.start()
+        if jarvis.db.get_setting("wake_word_enabled", False):
+            _start_wake(app)
         yield
+        if app.state.wake:
+            app.state.wake.stop()
         await jarvis.stop()
 
     app = FastAPI(title="JARVIS CORE API", version=VERSION, lifespan=lifespan,
@@ -653,6 +669,21 @@ def create_app(settings: Settings | None = None, *, dry_run: bool = False) -> Fa
     @app.get("/api/voice/status", tags=["voice"])
     def voice_status(request: Request, _: Principal = Depends(principal)):
         return request.app.state.voice.status()
+
+    @app.post("/api/voice/wakeword", tags=["voice"])
+    async def voice_wakeword(body: dict, request: Request, _: Principal = Depends(admin)):
+        """Lokale Wake-Word-Schleife ("Hey Jarvis") am PC ein-/ausschalten."""
+        j = app_of(request)
+        enabled = bool(body.get("enabled"))
+        j.db.set_setting("wake_word_enabled", enabled)
+        if enabled:
+            if not _start_wake(request.app):
+                raise ApiError(501, "wakeword_unavailable",
+                               "openWakeWord/sounddevice nicht installiert (requirements-voice.txt)")
+        elif request.app.state.wake:
+            request.app.state.wake.stop()
+        j.db.audit("desktop", "wakeword_" + ("on" if enabled else "off"), risk=2)
+        return {"enabled": enabled}
 
     @app.post("/api/voice/transcribe", tags=["voice"])
     async def voice_transcribe(request: Request, audio: UploadFile = File(...), language: str = "de",

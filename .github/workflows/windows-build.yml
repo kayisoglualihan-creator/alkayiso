@@ -1,0 +1,60 @@
+name: Windows-Build (Installer)
+
+# Baut auf einem echten Windows-Runner: Tests, JARVIS.exe (PyInstaller), Flutter-Desktop-App
+# und den Installer JARVIS-Setup-x.y.z.exe (Inno Setup). Ergebnis als Artefakt herunterladbar.
+on:
+  push:
+    branches: ["main", "claude/**"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Abhängigkeiten
+        run: pip install -r backend/requirements-windows.txt -r backend/requirements-dev.txt numpy
+      - name: Backend-Tests (Windows)
+        working-directory: backend
+        env:
+          JARVIS_DISABLE_KEYRING: "1"
+        run: python -m pytest -o addopts="" -v
+      - name: Windows-spezifischer Selbsttest (Fenster, DPAPI, Autostart-Befehl)
+        working-directory: backend
+        run: |
+          python -c "from jarvis.tools.system import list_windows, system_snapshot; print(len(list_windows()), 'Fenster'); print(system_snapshot()['os'])"
+          python -c "from jarvis.security.secrets import protect, unprotect; d=protect(b'geheim'); assert d.startswith(b'DPAPI:'); assert unprotect(d)==b'geheim'; print('DPAPI ok')"
+          python -c "from jarvis.windows_agent import launch_command; print(launch_command())"
+      - name: JARVIS.exe bauen (PyInstaller)
+        run: pyinstaller installers\jarvis.spec --noconfirm
+      - name: JARVIS.exe Rauchtest
+        shell: pwsh
+        run: |
+          $env:JARVIS_DATA_DIR = "$env:RUNNER_TEMP\jarvisdata"
+          $p = Start-Process -FilePath dist\JARVIS\JARVIS.exe -ArgumentList "--port","8790" -PassThru
+          $ok = $false
+          for ($i = 0; $i -lt 60; $i++) { try { $r = Invoke-RestMethod http://127.0.0.1:8790/api/health; if ($r.status -eq "ok") { $ok = $true; break } } catch {}; Start-Sleep 1 }
+          Stop-Process -Id $p.Id -Force
+          if (-not $ok) { Get-Content "$env:JARVIS_DATA_DIR\jarvis.log" -ErrorAction SilentlyContinue; throw "JARVIS.exe startet nicht" }
+          Write-Host "JARVIS.exe läuft"
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Flutter-Desktop-App bauen
+        working-directory: apps/jarvis_app
+        run: |
+          flutter pub get
+          flutter build windows --release
+      - name: Installer bauen (Inno Setup)
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress; }
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" installers\jarvis.iss
+      - uses: actions/upload-artifact@v4
+        with:
+          name: JARVIS-Windows-Installer
+          path: installers/output/*.exe

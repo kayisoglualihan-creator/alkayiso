@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  backend-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Abhängigkeiten
+        run: pip install -r backend/requirements-dev.txt numpy
+      - name: Lint
+        working-directory: backend
+        run: ruff check jarvis tests
+      - name: Tests
+        working-directory: backend
+        env:
+          JARVIS_DISABLE_KEYRING: "1"
+        run: python -m pytest -o addopts="" -v
+
+  flutter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - working-directory: apps/jarvis_app
+        run: |
+          flutter pub get
+          flutter analyze
+          flutter test

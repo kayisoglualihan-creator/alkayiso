@@ -117,6 +117,13 @@ function onEvent(ev) {
     case "notification": onNotification(d); break;
     case "pairing.claimed": showPairingRequest(d); break;
     case "devices.changed": case "device.revoked": if (S.mode === "admin") loadDevices(); break;
+    case "voice.state": Core.set({ listening: "listening", thinking: "thinking", error: "error" }[d.state] || "idle"); break;
+    case "voice.transcript": addMsg("user", "🎙 " + d.text); break;
+    case "voice.reply": {
+      addMsg("assistant", d.text); S.conv = d.conversation_id; store.set("conv", S.conv);
+      const v = S.settings?.voice; if (!(v && (v.tts_piper || v.tts_elevenlabs))) speak(d.text);
+      break;
+    }
   }
 }
 function onNotification(n) {
@@ -578,6 +585,11 @@ async function loadSettings() {
   $("#set-roots").value = st.allowed_roots.join("\n");
   const v = st.voice;
   $("#voice-status").innerHTML = `Browser-Sprache: ${SR ? "✓ Erkennung" : "✗ Erkennung"} · ${"speechSynthesis" in window ? "✓ Ausgabe" : "✗ Ausgabe"}<br>Server: faster-whisper ${v.stt_faster_whisper ? "✓" : "✗"} · Piper ${v.tts_piper ? "✓" : "✗"} · ElevenLabs ${v.tts_elevenlabs ? "✓" : "✗"} · openWakeWord ${v.wakeword_openwakeword ? "✓" : "✗"}`;
+  $("#set-wake-server").checked = !!st.values.wake_word_enabled;
+  $("#set-wake-server").onchange = async (e) => {
+    try { await api("/api/voice/wakeword", { method: "POST", body: { enabled: e.target.checked } }); toast(e.target.checked ? "Wake Word am PC aktiv" : "Wake Word aus"); }
+    catch (err) { e.target.checked = false; toast(err.message); }
+  };
   const tools = await api("/api/tools");
   $("#tool-list").innerHTML = "";
   tools.forEach((t) => {
